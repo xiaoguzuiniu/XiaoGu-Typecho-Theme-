@@ -1,0 +1,43 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        PUID: ${PUID:-1000}
+        PGID: ${PGID:-1000}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APACHE_RUN_USER: "#${PUID:-1000}"
+      APACHE_RUN_GROUP: "#${PGID:-1000}"
+      TYPECHO_DB_HOST: db
+      TYPECHO_DB_PORT: 3306
+      TYPECHO_DB_USER: ${MYSQL_USER:-typecho}
+      TYPECHO_DB_PASSWORD: ${MYSQL_PASSWORD:-typecho}
+      TYPECHO_DB_NAME: ${MYSQL_DATABASE:-typecho}
+
+  db:
+    image: mysql:8.0
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-typecho}
+      MYSQL_USER: ${MYSQL_USER:-typecho}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-typecho}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  db_data:
