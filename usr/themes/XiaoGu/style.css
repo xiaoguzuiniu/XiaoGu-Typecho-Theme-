@@ -875,9 +875,19 @@ a:hover {
         flex-direction: column;
     }
 
-    .hero {
+    .home-intro {
         min-height: 0;
-        flex: 0 0 clamp(220px, 34vh, 310px);
+        flex: 0 0 auto;
+        overflow: hidden;
+    }
+
+    .home-intro-content {
+        will-change: transform;
+    }
+
+    .hero {
+        height: clamp(220px, 34vh, 310px);
+        min-height: 0;
     }
 
     .topic-strip {

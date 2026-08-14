@@ -22,26 +22,30 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
         <div class="content-grid">
             <section class="main-column">
-                <section class="hero" aria-label="站点横幅">
-                    <div class="hero-profile">
-                        <span class="hero-avatar" aria-hidden="true">X</span>
-                        <div class="hero-copy">
-                            <h1><?php $this->options->title(); ?></h1>
+                <div class="home-intro">
+                    <div class="home-intro-content">
+                        <section class="hero" aria-label="站点横幅">
+                            <div class="hero-profile">
+                                <span class="hero-avatar" aria-hidden="true">X</span>
+                                <div class="hero-copy">
+                                    <h1><?php $this->options->title(); ?></h1>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="hero-bio">
+                            <p><?php $this->options->description(); ?></p>
                         </div>
+
+                        <nav class="topic-strip" aria-label="文章标签">
+                            <a class="is-active" href="<?php $this->options->siteUrl(); ?>">全部</a>
+                            <?php \Widget\Metas\Tag\Cloud::alloc('sort=count&desc=1')->to($homeTags); ?>
+                            <?php while ($homeTags->next()): ?>
+                                <a href="<?php $homeTags->permalink(); ?>"><?php $homeTags->name(); ?></a>
+                            <?php endwhile; ?>
+                        </nav>
                     </div>
-                </section>
-
-                <div class="hero-bio">
-                    <p><?php $this->options->description(); ?></p>
                 </div>
-
-                <nav class="topic-strip" aria-label="文章标签">
-                    <a class="is-active" href="<?php $this->options->siteUrl(); ?>">全部</a>
-                    <?php \Widget\Metas\Tag\Cloud::alloc('sort=count&desc=1')->to($homeTags); ?>
-                    <?php while ($homeTags->next()): ?>
-                        <a href="<?php $homeTags->permalink(); ?>"><?php $homeTags->name(); ?></a>
-                    <?php endwhile; ?>
-                </nav>
 
                 <main class="post-list" aria-label="文章列表">
                     <?php while ($this->next()): ?>
@@ -111,6 +115,62 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
         });
 
         setBookOpen(false);
+    }());
+
+    (function () {
+        const mainColumn = document.querySelector('.main-column');
+        const intro = mainColumn ? mainColumn.querySelector('.home-intro') : null;
+        const introContent = intro ? intro.querySelector('.home-intro-content') : null;
+        const hero = intro ? intro.querySelector('.hero') : null;
+        const postList = mainColumn ? mainColumn.querySelector('.post-list') : null;
+        const desktop = window.matchMedia('(min-width: 901px)');
+        let expandedHeight = 0;
+        let maxCollapse = 0;
+        let frame = 0;
+
+        if (!intro || !introContent || !hero || !postList) return;
+
+        function render() {
+            frame = 0;
+
+            if (!desktop.matches) {
+                intro.style.removeProperty('height');
+                introContent.style.removeProperty('transform');
+                return;
+            }
+
+            const collapse = Math.min(postList.scrollTop, maxCollapse);
+            intro.style.height = Math.max(0, expandedHeight - collapse) + 'px';
+            introContent.style.transform = 'translate3d(0, ' + (-collapse) + 'px, 0)';
+        }
+
+        function requestRender() {
+            if (!frame) frame = window.requestAnimationFrame(render);
+        }
+
+        function measure() {
+            if (!desktop.matches) {
+                render();
+                return;
+            }
+
+            expandedHeight = introContent.offsetHeight;
+            maxCollapse = Math.min(180, Math.max(0, hero.offsetHeight - 110));
+            render();
+        }
+
+        postList.addEventListener('scroll', requestRender, { passive: true });
+        window.addEventListener('resize', function () {
+            window.requestAnimationFrame(measure);
+        });
+
+        if (typeof desktop.addEventListener === 'function') {
+            desktop.addEventListener('change', measure);
+        } else {
+            desktop.addListener(measure);
+        }
+
+        window.requestAnimationFrame(measure);
     }());
 </script>
 
