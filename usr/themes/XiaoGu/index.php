@@ -23,14 +23,17 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
         <div class="content-grid">
             <section class="main-column">
                 <section class="hero" aria-label="站点横幅">
-                    <div class="hero-orb hero-orb-one"></div>
-                    <div class="hero-orb hero-orb-two"></div>
-                    <div class="hero-copy">
-                        <span class="hero-kicker">WELCOME TO MY BLOG</span>
-                        <h1><?php $this->options->title(); ?></h1>
-                        <p><?php $this->options->description(); ?></p>
+                    <div class="hero-profile">
+                        <span class="hero-avatar" aria-hidden="true">X</span>
+                        <div class="hero-copy">
+                            <h1><?php $this->options->title(); ?></h1>
+                        </div>
                     </div>
                 </section>
+
+                <div class="hero-bio">
+                    <p><?php $this->options->description(); ?></p>
+                </div>
 
                 <nav class="topic-strip" aria-label="文章标签">
                     <a class="is-active" href="<?php $this->options->siteUrl(); ?>">全部</a>
