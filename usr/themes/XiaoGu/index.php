@@ -74,8 +74,6 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
             <?php $this->need('sidebar.php'); ?>
         </div>
-
-        <?php $this->need('footer.php'); ?>
     </div>
 
     <button class="book-toggle" id="book-toggle" type="button"

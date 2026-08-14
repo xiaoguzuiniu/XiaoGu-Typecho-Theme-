@@ -769,10 +769,10 @@ a:hover {
 
 .site-footer {
     display: flex;
-    justify-content: space-between;
-    padding: 18px 24px;
-    border-top: 1px solid var(--line);
-    background: var(--surface);
+    justify-content: flex-end;
+    margin-top: auto;
+    padding: 18px 0 0;
+    background: transparent;
     color: #9a9eb7;
     font-size: 11px;
 }
@@ -785,20 +785,87 @@ a:hover {
         overflow: hidden;
     }
 
-    .site-shell {
-        display: flex;
-        height: calc(100vh - 80px);
-        flex-direction: column;
+    .book-stage {
+        margin-top: 16px;
+        margin-bottom: 16px;
     }
 
-    .site-header,
-    .site-footer {
-        flex: 0 0 auto;
+    .site-shell {
+        display: grid;
+        grid-template-columns: 164px minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
+        height: calc(100vh - 32px);
+    }
+
+    .site-header {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        padding: 24px 16px 18px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 22px;
+        overflow: hidden;
+        background: var(--sidebar);
+        border-right: 1px solid var(--line);
+        border-bottom: 0;
+    }
+
+    .site-header .brand {
+        flex-direction: column;
+        align-items: center;
+        gap: 9px;
+        text-align: center;
+    }
+
+    .site-header .brand-copy {
+        align-items: center;
+        width: 100%;
+    }
+
+    .site-header .brand-copy strong {
+        max-width: 132px;
+    }
+
+    .site-header .top-nav {
+        width: 100%;
+        min-height: 0;
+        flex: 0 1 auto;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        white-space: normal;
+    }
+
+    .site-header .top-nav a {
+        width: 100%;
+        padding: 7px 10px;
+        border-radius: 6px;
+    }
+
+    .site-header .top-nav a:hover,
+    .site-header .top-nav .is-current {
+        background: var(--primary-soft);
+    }
+
+    .site-header .header-actions {
+        width: 100%;
+        margin-top: auto;
+        justify-content: center;
+    }
+
+    .site-header .search-form:focus-within input {
+        width: 66px;
     }
 
     .content-grid {
+        grid-column: 2;
+        grid-row: 1;
         min-height: 0;
-        flex: 1 1 auto;
         overflow: hidden;
     }
 
@@ -831,7 +898,11 @@ a:hover {
     }
 
     .site-sidebar {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
         overflow: hidden;
+        border-left: 1px solid var(--line);
     }
 }
 
@@ -871,6 +942,10 @@ a:hover {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 28px;
+    }
+
+    .site-sidebar .site-footer {
+        grid-column: 1 / -1;
     }
 
     .sidebar-block {

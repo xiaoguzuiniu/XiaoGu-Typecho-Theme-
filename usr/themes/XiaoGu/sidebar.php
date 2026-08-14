@@ -44,4 +44,6 @@ $weekdays = ['日', '一', '二', '三', '四', '五', '六'];
             <?php endwhile; ?>
         </ol>
     </section>
+
+    <?php $this->need('footer.php'); ?>
 </aside>
