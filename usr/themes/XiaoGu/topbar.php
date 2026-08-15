@@ -1,12 +1,4 @@
 <header class="site-header">
-    <a class="brand" href="<?php $this->options->siteUrl(); ?>" aria-label="返回首页">
-        <span class="brand-mark">X</span>
-        <span class="brand-copy">
-            <strong><?php $this->options->title(); ?></strong>
-            <small>MY PERSONAL BLOG</small>
-        </span>
-    </a>
-
     <nav class="top-nav" aria-label="主导航">
         <a class="top-nav-home<?php if ($this->is('index')): ?> is-current<?php endif; ?>"
            href="<?php $this->options->siteUrl(); ?>">⌂ 首页</a>

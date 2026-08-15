@@ -1,5 +1,23 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
+
+$profileName = trim((string) $this->options->profileName);
+$profileSignature = trim((string) $this->options->profileSignature);
+$profileAvatarUrl = trim((string) $this->options->profileAvatarUrl);
+$heroImageUrl = trim((string) $this->options->heroImageUrl);
+$browserTitle = trim((string) $this->options->browserTitle);
+
+if ($profileName === '') {
+    $profileName = (string) $this->options->title;
+}
+
+if ($profileSignature === '') {
+    $profileSignature = (string) $this->options->description;
+}
+
+if ($browserTitle === '') {
+    $browserTitle = (string) $this->options->title;
+}
 ?>
 
 <!DOCTYPE html>
@@ -7,7 +25,9 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 <head>
     <meta charset="<?php $this->options->charset(); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php $this->options->title(); ?></title>
+    <title><?php echo htmlspecialchars($browserTitle, ENT_QUOTES, 'UTF-8'); ?></title>
+    <link rel="icon" type="image/svg+xml"
+          href="<?php $this->options->themeUrl('assets/favicon.svg?v=' . filemtime(__DIR__ . '/assets/favicon.svg')); ?>">
     <link rel="stylesheet"
           href="<?php $this->options->themeUrl('style.css?v=' . filemtime(__DIR__ . '/style.css')); ?>">
     <?php $this->header(); ?>
@@ -25,23 +45,38 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
                 <div class="home-intro">
                     <div class="home-intro-content">
                         <section class="hero" aria-label="站点横幅">
+                            <?php if ($heroImageUrl !== ''): ?>
+                                <img class="hero-image" src="<?php echo htmlspecialchars($heroImageUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                     alt="" decoding="async">
+                            <?php else: ?>
+                                <img class="hero-image" src="<?php $this->options->themeUrl('assets/mountain-hero.jpg'); ?>"
+                                     alt="" decoding="async">
+                            <?php endif; ?>
                             <div class="hero-profile">
-                                <span class="hero-avatar" aria-hidden="true">X</span>
+                                <?php if ($profileAvatarUrl !== ''): ?>
+                                    <img class="hero-avatar hero-avatar-image"
+                                         src="<?php echo htmlspecialchars($profileAvatarUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                         alt="" decoding="async">
+                                <?php else: ?>
+                                    <span class="hero-avatar" aria-hidden="true">X</span>
+                                <?php endif; ?>
                                 <div class="hero-copy">
-                                    <h1><?php $this->options->title(); ?></h1>
+                                    <h1><?php echo htmlspecialchars($profileName, ENT_QUOTES, 'UTF-8'); ?></h1>
                                 </div>
                             </div>
                         </section>
 
                         <div class="hero-bio">
-                            <p><?php $this->options->description(); ?></p>
+                            <p><?php echo htmlspecialchars($profileSignature, ENT_QUOTES, 'UTF-8'); ?></p>
                         </div>
 
                         <nav class="topic-strip" aria-label="文章标签">
-                            <a class="is-active" href="<?php $this->options->siteUrl(); ?>">全部</a>
+                            <a<?php if ($this->is('index')): ?> class="is-active"<?php endif; ?>
+                                href="<?php $this->options->siteUrl(); ?>">全部</a>
                             <?php \Widget\Metas\Tag\Cloud::alloc('sort=count&desc=1')->to($homeTags); ?>
                             <?php while ($homeTags->next()): ?>
-                                <a href="<?php $homeTags->permalink(); ?>"><?php $homeTags->name(); ?></a>
+                                <a<?php if ($this->is('tag', $homeTags->slug)): ?> class="is-active"<?php endif; ?>
+                                    href="<?php $homeTags->permalink(); ?>"><?php $homeTags->name(); ?></a>
                             <?php endwhile; ?>
                         </nav>
                     </div>
@@ -73,6 +108,19 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
                             </div>
                         </article>
                     <?php endwhile; ?>
+
+                    <div class="post-list-end" role="status" aria-live="polite">
+                        <span class="post-list-end-text">
+                        <?php if ($this->getCurrentPage() >= $this->getTotalPage()): ?>
+                            — 已经到底了 —
+                        <?php else: ?>
+                            加载更多文章…
+                        <?php endif; ?>
+                        </span>
+                        <?php if ($this->getCurrentPage() < $this->getTotalPage()): ?>
+                            <span class="post-list-next" aria-hidden="true"><?php $this->pageLink('下一页', 'next'); ?></span>
+                        <?php endif; ?>
+                    </div>
                 </main>
             </section>
 
@@ -160,6 +208,25 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
         }
 
         postList.addEventListener('scroll', requestRender, { passive: true });
+        mainColumn.addEventListener('wheel', function (event) {
+            if (!desktop.matches || postList.contains(event.target) || event.ctrlKey) return;
+            if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+
+            let delta = event.deltaY;
+            if (event.deltaMode === 1) {
+                delta *= 16;
+            } else if (event.deltaMode === 2) {
+                delta *= postList.clientHeight;
+            }
+
+            const previousScrollTop = postList.scrollTop;
+            postList.scrollTop += delta;
+
+            if (postList.scrollTop !== previousScrollTop) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
         window.addEventListener('resize', function () {
             window.requestAnimationFrame(measure);
         });
@@ -171,6 +238,109 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
         }
 
         window.requestAnimationFrame(measure);
+    }());
+
+    (function () {
+        const postList = document.querySelector('.post-list');
+        const endMarker = postList ? postList.querySelector('.post-list-end') : null;
+        const statusText = endMarker ? endMarker.querySelector('.post-list-end-text') : null;
+        const desktop = window.matchMedia('(min-width: 901px)');
+        let observer = null;
+        let loading = false;
+
+        if (!postList || !endMarker || !statusText) return;
+
+        function nextLink() {
+            return endMarker.querySelector('.post-list-next a');
+        }
+
+        function finish() {
+            const next = endMarker.querySelector('.post-list-next');
+            if (next) next.remove();
+            statusText.textContent = '— 已经到底了 —';
+            endMarker.classList.remove('is-error');
+            if (observer) observer.disconnect();
+        }
+
+        async function loadNextPage() {
+            const link = nextLink();
+            if (loading || !link) {
+                if (!link) finish();
+                return;
+            }
+
+            loading = true;
+            endMarker.classList.remove('is-error');
+            statusText.textContent = '加载更多文章…';
+
+            try {
+                const response = await window.fetch(link.href, { credentials: 'same-origin' });
+                if (!response.ok) throw new Error('Unable to load the next page');
+
+                const documentText = await response.text();
+                const nextDocument = new window.DOMParser().parseFromString(documentText, 'text/html');
+                const nextList = nextDocument.querySelector('.post-list');
+                const nextMarker = nextList ? nextList.querySelector('.post-list-end') : null;
+
+                if (!nextList || !nextMarker) throw new Error('Invalid article list response');
+
+                Array.from(nextList.children).forEach(function (item) {
+                    if (item.classList.contains('post-card')) {
+                        postList.insertBefore(document.importNode(item, true), endMarker);
+                    }
+                });
+
+                const followingLink = nextMarker.querySelector('.post-list-next a');
+                if (followingLink) {
+                    link.href = followingLink.href;
+                    statusText.textContent = '继续向下滚动';
+                } else {
+                    finish();
+                }
+            } catch (error) {
+                statusText.textContent = '加载失败，点击重试';
+                endMarker.classList.add('is-error');
+            } finally {
+                loading = false;
+            }
+        }
+
+        function observeEndMarker() {
+            if (observer) observer.disconnect();
+            if (!nextLink()) {
+                finish();
+                return;
+            }
+
+            observer = new window.IntersectionObserver(function (entries) {
+                if (entries[0] && entries[0].isIntersecting) loadNextPage();
+            }, {
+                root: desktop.matches ? postList : null,
+                rootMargin: '0px 0px 160px 0px',
+                threshold: 0.01
+            });
+            observer.observe(endMarker);
+        }
+
+        endMarker.addEventListener('click', function () {
+            if (endMarker.classList.contains('is-error')) loadNextPage();
+        });
+
+        if (typeof desktop.addEventListener === 'function') {
+            desktop.addEventListener('change', observeEndMarker);
+        } else {
+            desktop.addListener(observeEndMarker);
+        }
+
+        if ('IntersectionObserver' in window && 'fetch' in window) {
+            observeEndMarker();
+        } else if (nextLink()) {
+            statusText.textContent = '请继续浏览下一页';
+            endMarker.classList.add('is-error');
+            endMarker.addEventListener('click', function () {
+                window.location.href = nextLink().href;
+            });
+        }
     }());
 </script>
 
