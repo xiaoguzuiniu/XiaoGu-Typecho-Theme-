@@ -140,10 +140,11 @@ if ($browserTitle === '') {
         const stage = document.getElementById('book-stage');
         const toggle = document.getElementById('book-toggle');
         const panels = stage ? stage.querySelectorAll('.book-panel') : [];
+        const storageKey = 'xiaogu-book-open';
 
         if (!stage || !toggle || !panels.length) return;
 
-        function setBookOpen(open) {
+        function setBookOpen(open, persist) {
             stage.classList.toggle('is-book-open', open);
             toggle.setAttribute('aria-expanded', String(open));
             toggle.querySelector('.book-toggle-label').textContent = open ? '收起两侧书页' : '展开两侧书页';
@@ -156,13 +157,34 @@ if ($browserTitle === '') {
                     panel.setAttribute('inert', '');
                 }
             });
+
+            if (persist) {
+                try {
+                    window.localStorage.setItem(storageKey, open ? '1' : '0');
+                } catch (error) {
+                    // 本地存储不可用时仍保留当前页面内的展开状态。
+                }
+            }
         }
 
         toggle.addEventListener('click', function () {
-            setBookOpen(!stage.classList.contains('is-book-open'));
+            setBookOpen(!stage.classList.contains('is-book-open'), true);
         });
 
-        setBookOpen(false);
+        let savedOpen = false;
+        try {
+            savedOpen = window.localStorage.getItem(storageKey) === '1';
+        } catch (error) {
+            savedOpen = false;
+        }
+
+        stage.classList.add('is-restoring-book-state');
+        setBookOpen(savedOpen, false);
+        window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(function () {
+                stage.classList.remove('is-restoring-book-state');
+            });
+        });
     }());
 
     (function () {
@@ -242,23 +264,25 @@ if ($browserTitle === '') {
 
     (function () {
         const postList = document.querySelector('.post-list');
-        const endMarker = postList ? postList.querySelector('.post-list-end') : null;
-        const statusText = endMarker ? endMarker.querySelector('.post-list-end-text') : null;
         const desktop = window.matchMedia('(min-width: 901px)');
+        let endMarker = null;
+        let statusText = null;
         let observer = null;
         let loading = false;
+        let generation = 0;
 
-        if (!postList || !endMarker || !statusText) return;
+        if (!postList) return;
 
         function nextLink() {
-            return endMarker.querySelector('.post-list-next a');
+            return endMarker ? endMarker.querySelector('.post-list-next a') : null;
         }
 
         function finish() {
+            if (!endMarker || !statusText) return;
             const next = endMarker.querySelector('.post-list-next');
             if (next) next.remove();
             statusText.textContent = '— 已经到底了 —';
-            endMarker.classList.remove('is-error');
+            endMarker.classList.remove('is-error', 'is-fallback');
             if (observer) observer.disconnect();
         }
 
@@ -269,6 +293,8 @@ if ($browserTitle === '') {
                 return;
             }
 
+            const requestGeneration = generation;
+            const requestMarker = endMarker;
             loading = true;
             endMarker.classList.remove('is-error');
             statusText.textContent = '加载更多文章…';
@@ -283,10 +309,11 @@ if ($browserTitle === '') {
                 const nextMarker = nextList ? nextList.querySelector('.post-list-end') : null;
 
                 if (!nextList || !nextMarker) throw new Error('Invalid article list response');
+                if (requestGeneration !== generation) return;
 
                 Array.from(nextList.children).forEach(function (item) {
                     if (item.classList.contains('post-card')) {
-                        postList.insertBefore(document.importNode(item, true), endMarker);
+                        postList.insertBefore(document.importNode(item, true), requestMarker);
                     }
                 });
 
@@ -298,10 +325,11 @@ if ($browserTitle === '') {
                     finish();
                 }
             } catch (error) {
+                if (requestGeneration !== generation) return;
                 statusText.textContent = '加载失败，点击重试';
                 endMarker.classList.add('is-error');
             } finally {
-                loading = false;
+                if (requestGeneration === generation) loading = false;
             }
         }
 
@@ -322,25 +350,192 @@ if ($browserTitle === '') {
             observer.observe(endMarker);
         }
 
-        endMarker.addEventListener('click', function () {
-            if (endMarker.classList.contains('is-error')) loadNextPage();
+        function reset() {
+            generation += 1;
+            loading = false;
+            if (observer) observer.disconnect();
+
+            endMarker = postList.querySelector('.post-list-end');
+            statusText = endMarker ? endMarker.querySelector('.post-list-end-text') : null;
+            if (!endMarker || !statusText) return;
+
+            endMarker.classList.remove('is-error', 'is-fallback');
+            if ('IntersectionObserver' in window && 'fetch' in window) {
+                observeEndMarker();
+            } else if (nextLink()) {
+                statusText.textContent = '请继续浏览下一页';
+                endMarker.classList.add('is-fallback');
+            }
+        }
+
+        postList.addEventListener('click', function (event) {
+            if (!endMarker || !event.target.closest('.post-list-end')) return;
+            if (endMarker.classList.contains('is-error')) {
+                loadNextPage();
+            } else if (endMarker.classList.contains('is-fallback') && nextLink()) {
+                window.location.href = nextLink().href;
+            }
         });
 
         if (typeof desktop.addEventListener === 'function') {
-            desktop.addEventListener('change', observeEndMarker);
+            desktop.addEventListener('change', reset);
         } else {
-            desktop.addListener(observeEndMarker);
+            desktop.addListener(reset);
         }
 
-        if ('IntersectionObserver' in window && 'fetch' in window) {
-            observeEndMarker();
-        } else if (nextLink()) {
-            statusText.textContent = '请继续浏览下一页';
-            endMarker.classList.add('is-error');
-            endMarker.addEventListener('click', function () {
-                window.location.href = nextLink().href;
+        window.XiaoGuInfiniteScroll = { reset: reset };
+        reset();
+    }());
+
+    (function () {
+        const topicStrip = document.querySelector('.topic-strip');
+        const postList = document.querySelector('.post-list');
+        const categoryList = document.querySelector('.nav-category-list');
+        const categoryToggle = document.querySelector('.nav-category-toggle');
+        const homeNavLink = document.querySelector('.top-nav-home');
+        let requestController = null;
+        let requestSequence = 0;
+
+        if (!topicStrip || !postList || !('fetch' in window)) return;
+
+        function updateActiveTag(nextStrip) {
+            const currentLinks = topicStrip.querySelectorAll('a');
+            const nextLinks = nextStrip ? nextStrip.querySelectorAll('a') : [];
+
+            currentLinks.forEach(function (link, index) {
+                const nextLink = nextLinks[index];
+                link.classList.toggle('is-active', Boolean(nextLink && nextLink.classList.contains('is-active')));
             });
         }
+
+        function updateActiveCategory(nextDocument) {
+            if (!categoryList) return;
+
+            const nextList = nextDocument.querySelector('.nav-category-list');
+            const nextToggle = nextDocument.querySelector('.nav-category-toggle');
+            const activeLink = nextList ? nextList.querySelector('a.is-current') : null;
+            const activeUrl = activeLink ? activeLink.href : '';
+
+            categoryList.querySelectorAll('a').forEach(function (link) {
+                link.classList.toggle('is-current', activeUrl !== '' && link.href === activeUrl);
+            });
+
+            if (categoryToggle) {
+                categoryToggle.classList.toggle('is-current', Boolean(nextToggle && nextToggle.classList.contains('is-current')));
+            }
+
+            if (homeNavLink) {
+                const nextHomeLink = nextDocument.querySelector('.top-nav-home');
+                homeNavLink.classList.toggle('is-current', Boolean(nextHomeLink && nextHomeLink.classList.contains('is-current')));
+            }
+        }
+
+        function selectTagImmediately(selectedLink) {
+            topicStrip.querySelectorAll('a').forEach(function (link) {
+                link.classList.toggle('is-active', link === selectedLink);
+            });
+
+            if (categoryList) {
+                categoryList.querySelectorAll('a').forEach(function (link) {
+                    link.classList.remove('is-current');
+                });
+            }
+            if (categoryToggle) categoryToggle.classList.remove('is-current');
+            if (homeNavLink) homeNavLink.classList.toggle('is-current', selectedLink === topicStrip.querySelector('a'));
+        }
+
+        function selectCategoryImmediately(selectedLink) {
+            if (!categoryList) return;
+
+            categoryList.querySelectorAll('a').forEach(function (link) {
+                link.classList.toggle('is-current', link === selectedLink);
+            });
+            if (categoryToggle) categoryToggle.classList.add('is-current');
+            if (homeNavLink) homeNavLink.classList.remove('is-current');
+            topicStrip.querySelectorAll('a').forEach(function (link) {
+                link.classList.remove('is-active');
+            });
+        }
+
+        async function loadFilter(url, addHistory) {
+            requestSequence += 1;
+            const sequence = requestSequence;
+
+            if (requestController) requestController.abort();
+            requestController = new window.AbortController();
+
+            postList.classList.add('is-filtering');
+            postList.setAttribute('aria-busy', 'true');
+
+            try {
+                const response = await window.fetch(url, {
+                    credentials: 'same-origin',
+                    signal: requestController.signal
+                });
+                if (!response.ok) throw new Error('Unable to load tag results');
+
+                const documentText = await response.text();
+                const nextDocument = new window.DOMParser().parseFromString(documentText, 'text/html');
+                const nextList = nextDocument.querySelector('.post-list');
+                const nextStrip = nextDocument.querySelector('.topic-strip');
+                if (!nextList || !nextStrip) throw new Error('Invalid tag response');
+                if (sequence !== requestSequence) return;
+
+                const nextItems = Array.from(nextList.children).map(function (item) {
+                    return document.importNode(item, true);
+                });
+
+                postList.replaceChildren.apply(postList, nextItems);
+                postList.scrollTop = 0;
+                postList.dispatchEvent(new Event('scroll'));
+                updateActiveTag(nextStrip);
+                updateActiveCategory(nextDocument);
+
+                const nextTitle = nextDocument.querySelector('title');
+                if (nextTitle) document.title = nextTitle.textContent;
+                if (addHistory) window.history.pushState({ xiaoGuFilter: true }, '', url);
+
+                if (window.XiaoGuInfiniteScroll) window.XiaoGuInfiniteScroll.reset();
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                window.location.href = url;
+            } finally {
+                if (sequence === requestSequence) {
+                    postList.classList.remove('is-filtering');
+                    postList.removeAttribute('aria-busy');
+                }
+            }
+        }
+
+        topicStrip.addEventListener('click', function (event) {
+            const link = event.target.closest('a');
+            if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            if (new URL(link.href).origin !== window.location.origin) return;
+
+            event.preventDefault();
+            if (!link.classList.contains('is-active')) {
+                selectTagImmediately(link);
+                loadFilter(link.href, true);
+            }
+        });
+
+        if (categoryList) {
+            categoryList.addEventListener('click', function (event) {
+                const link = event.target.closest('a');
+                if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                if (new URL(link.href).origin !== window.location.origin) return;
+
+                event.preventDefault();
+                if (!link.classList.contains('is-current')) {
+                    selectCategoryImmediately(link);
+                    loadFilter(link.href, true);
+                }
+            });
+        }
+
+        window.addEventListener('popstate', function () {
+            loadFilter(window.location.href, false);
+        });
     }());
 </script>
 
