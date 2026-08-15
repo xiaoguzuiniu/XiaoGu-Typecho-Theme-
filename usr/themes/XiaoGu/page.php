@@ -8,6 +8,21 @@ if ($browserTitle === '') {
 
 $pageTitle = (string) $this->title;
 $pageSlug = (string) $this->slug;
+$isPost = $this->is('post');
+$isGuestbook = $this->is('page', 'guestbook');
+
+$profileName = trim((string) $this->options->profileName);
+$profileSignature = trim((string) $this->options->profileSignature);
+$profileAvatarUrl = trim((string) $this->options->profileAvatarUrl);
+$heroImageUrl = trim((string) $this->options->heroImageUrl);
+
+if ($profileName === '') {
+    $profileName = (string) $this->options->title;
+}
+
+if ($profileSignature === '') {
+    $profileSignature = (string) $this->options->description;
+}
 ?>
 
 <!DOCTYPE html>
@@ -31,22 +46,67 @@ $pageSlug = (string) $this->slug;
         <?php $this->need('topbar.php'); ?>
 
         <div class="content-grid page-layout">
-            <main class="page-column" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>">
-                <article class="page-article page-<?php echo htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
-                    <header class="page-heading">
-                        <span class="page-heading-mark" aria-hidden="true">◇</span>
-                        <div>
-                            <p>INDEPENDENT PAGE</p>
-                            <h1><?php $this->title(); ?></h1>
+            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>">
+                <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php if ($isPost): ?>
+                        <section class="post-detail-hero" aria-label="文章头图">
+                            <?php if ($heroImageUrl !== ''): ?>
+                                <img src="<?php echo htmlspecialchars($heroImageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="" decoding="async">
+                            <?php else: ?>
+                                <img src="<?php $this->options->themeUrl('assets/mountain-hero.jpg'); ?>" alt="" decoding="async">
+                            <?php endif; ?>
+
+                            <div class="post-detail-profile">
+                                <div class="post-detail-profile-copy">
+                                    <strong><?php echo htmlspecialchars($profileName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                    <?php if ($profileSignature !== ''): ?>
+                                        <span><?php echo htmlspecialchars($profileSignature, ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if ($profileAvatarUrl !== ''): ?>
+                                    <img class="post-detail-avatar" src="<?php echo htmlspecialchars($profileAvatarUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                         alt="" decoding="async">
+                                <?php else: ?>
+                                    <span class="post-detail-avatar post-detail-avatar-fallback" aria-hidden="true">X</span>
+                                <?php endif; ?>
+                            </div>
+                        </section>
+
+                        <div class="post-detail-body">
+                            <header class="post-detail-heading">
+                                <h1><?php $this->title(); ?></h1>
+                                <div class="post-detail-heading-row">
+                                    <div class="post-detail-meta">
+                                        <span><?php $this->author(); ?></span>
+                                        <time datetime="<?php $this->date('c'); ?>"><?php $this->date('Y-m-d'); ?></time>
+                                        <span><?php $this->commentsNum('暂无评论', '1 条评论', '%d 条评论'); ?></span>
+                                    </div>
+                                    <span class="post-detail-category"><?php $this->category(' · '); ?></span>
+                                </div>
+                            </header>
+
+                            <div class="page-content">
+                                <?php $this->content(); ?>
+                            </div>
+
+                            <?php $this->need('comments.php'); ?>
                         </div>
-                    </header>
+                    <?php else: ?>
+                        <header class="page-heading">
+                            <span class="page-heading-mark" aria-hidden="true">◇</span>
+                            <div>
+                                <p>INDEPENDENT PAGE</p>
+                                <h1><?php $this->title(); ?></h1>
+                            </div>
+                        </header>
 
-                    <div class="page-content">
-                        <?php $this->content(); ?>
-                    </div>
+                        <div class="page-content">
+                            <?php $this->content(); ?>
+                        </div>
 
-                    <?php if ($this->is('page', 'guestbook')): ?>
-                        <?php $this->need('comments.php'); ?>
+                        <?php if ($isGuestbook): ?>
+                            <?php $this->need('comments.php'); ?>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </article>
             </main>

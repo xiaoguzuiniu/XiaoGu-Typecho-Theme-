@@ -48,3 +48,19 @@ function themeConfig($form)
     );
     $form->addInput($heroImageUrl->addRule('url', _t('请填写正确的头图 URL 地址')));
 }
+
+function themeFields($layout)
+{
+    $displayMode = new \Typecho\Widget\Helper\Form\Element\Select(
+        'displayMode',
+        [
+            'article' => _t('普通文章（点击进入详情）'),
+            'moment' => _t('朋友圈动态（列表直接展示）'),
+        ],
+        'article',
+        _t('内容展示类型'),
+        _t('朋友圈动态会在文章列表中直接显示完整正文和图片，不提供详情页入口。')
+    );
+
+    $layout->addItem($displayMode);
+}

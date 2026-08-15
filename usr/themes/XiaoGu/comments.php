@@ -1,10 +1,15 @@
-<?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
+<?php
+if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
-<section id="comments" class="comments-area" aria-label="留言区">
+$isGuestbookComments = $this->is('page', 'guestbook');
+$commentsLabel = $isGuestbookComments ? '留言' : '评论';
+?>
+
+<section id="comments" class="comments-area" aria-label="<?php echo $commentsLabel; ?>区">
     <?php $this->comments()->to($comments); ?>
 
     <?php if ($comments->have()): ?>
-        <h2><?php $this->commentsNum('还没有留言', '已有 1 条留言', '已有 %d 条留言'); ?></h2>
+        <h2><?php $this->commentsNum('还没有' . $commentsLabel, '已有 1 条' . $commentsLabel, '已有 %d 条' . $commentsLabel); ?></h2>
         <?php $comments->listComments(); ?>
         <?php $comments->pageNav('上一页', '下一页'); ?>
     <?php endif; ?>
@@ -12,7 +17,7 @@
     <?php if ($this->allow('comment')): ?>
         <div id="<?php $this->respondId(); ?>" class="respond">
             <div class="cancel-comment-reply"><?php $comments->cancelReply(); ?></div>
-            <h2 id="response">写下你的留言</h2>
+            <h2 id="response">写下你的<?php echo $commentsLabel; ?></h2>
 
             <form method="post" action="<?php $this->commentUrl(); ?>" id="comment-form" role="form">
                 <?php if ($this->user->hasLogin()): ?>
@@ -28,10 +33,10 @@
                 <label class="comment-textarea">内容
                     <textarea rows="6" name="text" required><?php $this->remember('text'); ?></textarea>
                 </label>
-                <button type="submit" class="comment-submit">提交留言</button>
+                <button type="submit" class="comment-submit">提交<?php echo $commentsLabel; ?></button>
             </form>
         </div>
     <?php else: ?>
-        <p class="comments-closed">留言已关闭。</p>
+        <p class="comments-closed"><?php echo $commentsLabel; ?>已关闭。</p>
     <?php endif; ?>
 </section>

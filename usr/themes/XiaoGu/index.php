@@ -82,31 +82,78 @@ if ($browserTitle === '') {
                     </div>
                 </div>
 
+                <svg class="moment-icon-sprite" aria-hidden="true">
+                    <symbol id="moment-icon-view" viewBox="0 0 1024 1024">
+                        <path d="M512 280.901818c171.752727 0 328.145455 167.098182 387.956364 238.545455C839.68 591.127273 683.287273 757.992727 512 757.992727S183.389091 591.127273 123.578182 519.447273C183.389091 448 339.781818 280.901818 512 280.901818zM512 209.454545C298.356364 209.454545 117.76 412.858182 56.785455 490.123636a46.545455 46.545455 0 0 0 0 58.647273C117.76 626.036364 298.356364 829.44 512 829.44s393.309091-203.403636 454.283636-280.669091a46.545455 46.545455 0 0 0 0-58.647273C905.309091 412.858182 724.712727 209.454545 512 209.454545z m0 238.545455a71.68 71.68 0 1 1-69.818182 71.447273 69.818182 69.818182 0 0 1 69.818182-71.447273z m0-71.68A139.636364 139.636364 0 0 0 382.603636 465.454545a146.385455 146.385455 0 0 0 30.254546 155.927273 137.076364 137.076364 0 0 0 151.970909 30.254546A143.127273 143.127273 0 0 0 651.636364 519.447273a141.265455 141.265455 0 0 0-139.636364-143.127273z"/>
+                    </symbol>
+                    <symbol id="moment-icon-comment" viewBox="0 0 1024 1024">
+                        <path d="M405.97 530.4m-40.81 0a40.81 40.81 0 1 0 81.62 0 40.81 40.81 0 1 0-81.62 0Z"/>
+                        <path d="M618.04 530.4m-40.81 0a40.81 40.81 0 1 0 81.62 0 40.81 40.81 0 1 0-81.62 0Z"/>
+                        <path d="M512.01 959.33c-70.48 0-140.41-16.79-202.89-48.62H93.23V669.25c-18.96-50.4-28.56-103.26-28.56-157.26 0-246.66 200.68-447.32 447.34-447.32s447.32 200.66 447.32 447.32-200.66 447.34-447.32 447.34zM166.85 837.09h160.56l8.16 4.39c53.89 28.94 114.89 44.23 176.43 44.23 206.06 0 373.7-167.65 373.7-373.72 0-206.06-167.65-373.7-373.7-373.7-206.07 0-373.72 167.65-373.72 373.7 0 47.09 8.75 93.16 25.99 136.91l2.57 6.51v181.68z"/>
+                    </symbol>
+                    <symbol id="moment-icon-like" viewBox="0 0 1024 1024">
+                        <path d="M886.777 610.948c-94.827 148.789-331.909 298.14-342.099 305.854-9.679 7.665-20.911 11.278-32.118 11.278-11.208 0-22.439-3.613-32.119-11.278-10.189-7.715-247.805-156.576-342.123-305.854C105.69 559.635 65.42 495.505 65.42 404.693c0-181.525 112.683-276.537 251.346-276.537 76.998 0 148.877 38.986 195.793 103.116 47.402-64.13 118.796-103.116 195.769-103.116 138.688 0 251.371 99.161 251.371 276.537 0.001 90.812-40.293 154.942-72.922 206.255zM711.289 189.151c-169.109 0-198.729 193.981-198.729 193.981S482.2 189.151 313.832 189.151c-109.747 0-186.729 78.543-186.729 188.981 0 8.495 0.704 16.796 1.723 24.998h-1.723s-5.744 102.949 91.364 218.978C319.99 743.435 512.56 867.085 512.56 867.085s183.281-115.352 290.093-242.977c90.583-108.241 95.364-220.978 95.364-220.978h-1.723c1.02-8.202 1.723-16.503 1.723-24.998 0.001-110.438-76.981-188.981-186.728-188.981z"/>
+                    </symbol>
+                </svg>
+
                 <main class="post-list" aria-label="文章列表">
                     <?php while ($this->next()): ?>
-                        <article class="post-card">
-                            <a class="post-cover" href="<?php $this->permalink(); ?>" aria-hidden="true" tabindex="-1">
-                                <span>XG</span>
-                            </a>
+                        <?php $displayMode = (string) $this->fields->displayMode; ?>
+                        <?php if ($displayMode === 'moment'): ?>
+                            <article class="moment-card">
+                                <header class="moment-header">
+                                    <?php if ($profileAvatarUrl !== ''): ?>
+                                        <img class="moment-avatar" src="<?php echo htmlspecialchars($profileAvatarUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                                             alt="" loading="lazy" decoding="async">
+                                    <?php else: ?>
+                                        <span class="moment-avatar moment-avatar-fallback" aria-hidden="true">X</span>
+                                    <?php endif; ?>
+                                    <div>
+                                        <strong><?php $this->author(); ?></strong>
+                                        <time datetime="<?php $this->date('c'); ?>"><?php $this->date('Y-m-d H:i'); ?></time>
+                                    </div>
+                                </header>
 
-                            <div class="post-content">
-                                <h2><a href="<?php $this->permalink(); ?>"><?php $this->title(); ?></a></h2>
-
-                                <div class="post-meta">
-                                    <span><?php $this->author(); ?></span>
-                                    <span><?php $this->date('Y-m-d'); ?></span>
+                                <div class="moment-content">
+                                    <?php echo $this->content; ?>
                                 </div>
 
-                                <div class="post-excerpt">
-                                    <?php $this->excerpt(120, '...'); ?>
-                                </div>
+                                <footer class="moment-foot">
+                                    <div class="moment-stats" aria-label="动态数据">
+                                        <span title="浏览统计暂未启用"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b>0</b></span>
+                                        <span title="评论数"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-comment"></use></svg><b><?php $this->commentsNum('0', '1', '%d'); ?></b></span>
+                                        <span title="喜欢功能暂未启用"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-like"></use></svg></span>
+                                    </div>
+                                    <?php if (!empty($this->tags)): ?>
+                                        <span class="moment-tags"><?php $this->tags(' ', true); ?></span>
+                                    <?php endif; ?>
+                                </footer>
+                            </article>
+                        <?php else: ?>
+                            <article class="post-card">
+                                <a class="post-cover" href="<?php $this->permalink(); ?>" aria-hidden="true" tabindex="-1">
+                                    <span>XG</span>
+                                </a>
 
-                                <div class="post-foot">
-                                    <span><?php $this->commentsNum('暂无评论', '1 条评论', '%d 条评论'); ?></span>
-                                    <span class="post-category"><?php $this->category(' · '); ?></span>
+                                <div class="post-content">
+                                    <h2><a href="<?php $this->permalink(); ?>"><?php $this->title(); ?></a></h2>
+
+                                    <div class="post-meta">
+                                        <span><?php $this->author(); ?></span>
+                                        <span><?php $this->date('Y-m-d'); ?></span>
+                                    </div>
+
+                                    <div class="post-excerpt">
+                                        <?php $this->excerpt(120, '...'); ?>
+                                    </div>
+
+                                    <div class="post-foot">
+                                        <span><?php $this->commentsNum('暂无评论', '1 条评论', '%d 条评论'); ?></span>
+                                        <span class="post-category"><?php $this->category(' · '); ?></span>
+                                    </div>
                                 </div>
-                            </div>
-                        </article>
+                            </article>
+                        <?php endif; ?>
                     <?php endwhile; ?>
 
                     <div class="post-list-end" role="status" aria-live="polite">
@@ -263,6 +310,46 @@ if ($browserTitle === '') {
     }());
 
     (function () {
+        function enhanceMoments(root) {
+            const scope = root || document;
+
+            scope.querySelectorAll('.moment-content:not([data-gallery-ready])').forEach(function (content) {
+                content.setAttribute('data-gallery-ready', 'true');
+                const images = Array.from(content.querySelectorAll('img'));
+                if (!images.length) return;
+
+                const gallery = document.createElement('div');
+                gallery.className = 'moment-gallery is-count-' + images.length;
+                const movedItems = [];
+
+                images.forEach(function (image) {
+                    image.loading = 'lazy';
+                    image.decoding = 'async';
+
+                    const imageLink = image.parentElement && image.parentElement.tagName === 'A'
+                        ? image.parentElement
+                        : null;
+                    const item = imageLink || image;
+                    if (movedItems.indexOf(item) !== -1) return;
+
+                    const oldParent = item.parentElement;
+                    movedItems.push(item);
+                    gallery.appendChild(item);
+
+                    if (oldParent && oldParent.tagName === 'P' && oldParent.textContent.trim() === '' && !oldParent.children.length) {
+                        oldParent.remove();
+                    }
+                });
+
+                content.appendChild(gallery);
+            });
+        }
+
+        window.XiaoGuEnhanceMoments = enhanceMoments;
+        enhanceMoments(document);
+    }());
+
+    (function () {
         const postList = document.querySelector('.post-list');
         const desktop = window.matchMedia('(min-width: 901px)');
         let endMarker = null;
@@ -312,10 +399,12 @@ if ($browserTitle === '') {
                 if (requestGeneration !== generation) return;
 
                 Array.from(nextList.children).forEach(function (item) {
-                    if (item.classList.contains('post-card')) {
+                    if (item.classList.contains('post-card') || item.classList.contains('moment-card')) {
                         postList.insertBefore(document.importNode(item, true), requestMarker);
                     }
                 });
+
+                if (window.XiaoGuEnhanceMoments) window.XiaoGuEnhanceMoments(postList);
 
                 const followingLink = nextMarker.querySelector('.post-list-next a');
                 if (followingLink) {
@@ -486,6 +575,7 @@ if ($browserTitle === '') {
                 });
 
                 postList.replaceChildren.apply(postList, nextItems);
+                if (window.XiaoGuEnhanceMoments) window.XiaoGuEnhanceMoments(postList);
                 postList.scrollTop = 0;
                 postList.dispatchEvent(new Event('scroll'));
                 updateActiveTag(nextStrip);

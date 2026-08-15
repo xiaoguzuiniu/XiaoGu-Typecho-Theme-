@@ -37,9 +37,14 @@ $weekdays = ['日', '一', '二', '三', '四', '五', '六'];
         <ol class="recent-list">
             <?php \Widget\Contents\Post\Recent::alloc('pageSize=5')->to($recentPosts); ?>
             <?php while ($recentPosts->next()): ?>
+                <?php $recentDisplayMode = (string) $recentPosts->fields->displayMode; ?>
                 <li>
                     <span><?php echo str_pad((string) $recentPosts->sequence, 2, '0', STR_PAD_LEFT); ?></span>
-                    <a href="<?php $recentPosts->permalink(); ?>"><?php $recentPosts->title(); ?></a>
+                    <?php if ($recentDisplayMode === 'moment'): ?>
+                        <span class="recent-moment-title"><?php $recentPosts->title(); ?></span>
+                    <?php else: ?>
+                        <a href="<?php $recentPosts->permalink(); ?>"><?php $recentPosts->title(); ?></a>
+                    <?php endif; ?>
                 </li>
             <?php endwhile; ?>
         </ol>
