@@ -130,17 +130,21 @@ if ($browserTitle === '') {
                                 </footer>
                             </article>
                         <?php else: ?>
+                            <?php $postCoverUrl = getPostCover($this); ?>
                             <article class="post-card">
                                 <a class="post-cover" href="<?php $this->permalink(); ?>" aria-hidden="true" tabindex="-1">
-                                    <span>XG</span>
+                                    <?php if ($postCoverUrl !== ''): ?>
+                                        <img src="<?php echo htmlspecialchars($postCoverUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy" decoding="async">
+                                    <?php else: ?>
+                                        <span>XG</span>
+                                    <?php endif; ?>
                                 </a>
 
                                 <div class="post-content">
                                     <h2><a href="<?php $this->permalink(); ?>"><?php $this->title(); ?></a></h2>
 
                                     <div class="post-meta">
-                                        <span><?php $this->author(); ?></span>
-                                        <span><?php $this->date('Y-m-d'); ?></span>
+                                        <span class="post-author">@<?php $this->author(); ?></span>
                                     </div>
 
                                     <div class="post-excerpt">
@@ -148,8 +152,14 @@ if ($browserTitle === '') {
                                     </div>
 
                                     <div class="post-foot">
-                                        <span><?php $this->commentsNum('暂无评论', '1 条评论', '%d 条评论'); ?></span>
-                                        <span class="post-category"><?php $this->category(' · '); ?></span>
+                                        <div class="post-stats" aria-label="文章数据">
+                                            <span title="浏览统计暂未启用"><svg class="post-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b>0</b></span>
+                                            <span title="评论数"><svg class="post-stat-icon" aria-hidden="true"><use href="#moment-icon-comment"></use></svg><b><?php $this->commentsNum('0', '1', '%d'); ?></b></span>
+                                            <span title="喜欢功能暂未启用"><svg class="post-stat-icon" aria-hidden="true"><use href="#moment-icon-like"></use></svg></span>
+                                        </div>
+                                        <?php if (!empty($this->tags)): ?>
+                                            <span class="post-tags"><?php $this->tags(' ', true); ?></span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </article>

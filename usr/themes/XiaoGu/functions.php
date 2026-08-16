@@ -62,5 +62,49 @@ function themeFields($layout)
         _t('朋友圈动态会在文章列表中直接显示完整正文和图片，不提供详情页入口。')
     );
 
+    $postCover = new \Typecho\Widget\Helper\Form\Element\Text(
+        'postCover',
+        null,
+        null,
+        _t('文章封面图'),
+        _t('填写完整图片 URL；留空时自动提取文章内第一张图片，都没有则显示默认占位图。')
+    );
+
     $layout->addItem($displayMode);
+    $layout->addItem($postCover->addRule('url', _t('请填写正确的封面图 URL 地址')));
+}
+
+/**
+ * 获取文章封面图 URL。
+ *
+ * 优先级：自定义字段 postCover > 正文第一张图片 > 空字符串。
+ *
+ * @param \Widget\Base\Contents $widget
+ * @return string
+ */
+function getPostCover($widget)
+{
+    $cover = (string) $widget->fields->postCover;
+    if ($cover !== '') {
+        return $cover;
+    }
+
+    $text = (string) $widget->text;
+
+    // 优先匹配 HTML <img>
+    if (preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $text, $matches)) {
+        return $matches[1];
+    }
+
+    // 再匹配 Markdown 图片语法 ![alt](url)
+    if (preg_match('/!\[[^\]]*\]\(([^\)]+)\)/', $text, $matches)) {
+        $url = trim($matches[1]);
+        // 支持 ![alt](url "title") 这种带标题的写法
+        if (($spacePos = strpos($url, ' ')) !== false) {
+            $url = substr($url, 0, $spacePos);
+        }
+        return $url;
+    }
+
+    return '';
 }
