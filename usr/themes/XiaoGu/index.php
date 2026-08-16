@@ -98,6 +98,7 @@ if ($browserTitle === '') {
 
                 <main class="post-list" aria-label="文章列表">
                     <?php while ($this->next()): ?>
+                        <?php recordPostView($this); ?>
                         <?php $displayMode = (string) $this->fields->displayMode; ?>
                         <?php if ($displayMode === 'moment'): ?>
                             <article class="moment-card">
@@ -120,9 +121,12 @@ if ($browserTitle === '') {
 
                                 <footer class="moment-foot">
                                     <div class="moment-stats" aria-label="动态数据">
-                                        <span title="浏览统计暂未启用"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b>0</b></span>
+                                        <span title="浏览量"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b><?php echo getPostViews($this); ?></b></span>
                                         <span title="评论数"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-comment"></use></svg><b><?php $this->commentsNum('0', '1', '%d'); ?></b></span>
-                                        <span title="喜欢功能暂未启用"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-like"></use></svg></span>
+                                        <span class="moment-like<?php echo isPostLiked($this->cid) ? ' is-liked' : ''; ?>" title="点赞" data-xiaogu-like="<?php $this->cid(); ?>" role="button" tabindex="0">
+                                            <svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-like"></use></svg>
+                                            <b data-xiaogu-like-count="<?php $this->cid(); ?>"><?php echo getPostLikes($this); ?></b>
+                                        </span>
                                     </div>
                                     <?php if (!empty($this->tags)): ?>
                                         <span class="moment-tags"><?php $this->tags(' ', true); ?></span>
@@ -153,9 +157,12 @@ if ($browserTitle === '') {
 
                                     <div class="post-foot">
                                         <div class="post-stats" aria-label="文章数据">
-                                            <span title="浏览统计暂未启用"><svg class="post-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b>0</b></span>
+                                            <span title="浏览量"><svg class="post-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b><?php echo getPostViews($this); ?></b></span>
                                             <span title="评论数"><svg class="post-stat-icon" aria-hidden="true"><use href="#moment-icon-comment"></use></svg><b><?php $this->commentsNum('0', '1', '%d'); ?></b></span>
-                                            <span title="喜欢功能暂未启用"><svg class="post-stat-icon" aria-hidden="true"><use href="#moment-icon-like"></use></svg></span>
+                                            <span class="post-like<?php echo isPostLiked($this->cid) ? ' is-liked' : ''; ?>" title="点赞" data-xiaogu-like="<?php $this->cid(); ?>" role="button" tabindex="0">
+                                                <svg class="post-stat-icon" aria-hidden="true"><use href="#moment-icon-like"></use></svg>
+                                                <b data-xiaogu-like-count="<?php $this->cid(); ?>"><?php echo getPostLikes($this); ?></b>
+                                            </span>
                                         </div>
                                         <?php if (!empty($this->tags)): ?>
                                             <span class="post-tags"><?php $this->tags(' ', true); ?></span>
@@ -415,6 +422,7 @@ if ($browserTitle === '') {
                 });
 
                 if (window.XiaoGuEnhanceMoments) window.XiaoGuEnhanceMoments(postList);
+                if (window.XiaoGuBindLikes) window.XiaoGuBindLikes(postList);
 
                 const followingLink = nextMarker.querySelector('.post-list-next a');
                 if (followingLink) {
@@ -586,6 +594,7 @@ if ($browserTitle === '') {
 
                 postList.replaceChildren.apply(postList, nextItems);
                 if (window.XiaoGuEnhanceMoments) window.XiaoGuEnhanceMoments(postList);
+                if (window.XiaoGuBindLikes) window.XiaoGuBindLikes(postList);
                 postList.scrollTop = 0;
                 postList.dispatchEvent(new Event('scroll'));
                 updateActiveTag(nextStrip);
@@ -636,6 +645,53 @@ if ($browserTitle === '') {
         window.addEventListener('popstate', function () {
             loadFilter(window.location.href, false);
         });
+    }());
+
+    (function () {
+        var siteUrl = '<?php echo rtrim($this->options->siteUrl, '/'); ?>/';
+
+        function bindLikes(root) {
+            var scope = root || document;
+            scope.querySelectorAll('[data-xiaogu-like]').forEach(function (el) {
+                if (el.dataset.xiaoguLikeBound) return;
+                el.dataset.xiaoguLikeBound = 'true';
+
+                function trigger() {
+                    if (el.classList.contains('is-processing')) return;
+                    var cid = el.getAttribute('data-xiaogu-like');
+                    var countEl = document.querySelector('[data-xiaogu-like-count="' + cid + '"]');
+                    el.classList.add('is-processing');
+
+                    fetch(siteUrl + '?xiaogu_action=like&cid=' + encodeURIComponent(cid), { credentials: 'same-origin' })
+                        .then(function (res) { return res.json(); })
+                        .then(function (data) {
+                            if (data.success) {
+                                el.classList.toggle('is-liked', data.liked);
+                                if (countEl) countEl.textContent = String(data.count);
+                            }
+                        })
+                        .catch(function () {})
+                        .finally(function () {
+                            el.classList.remove('is-processing');
+                        });
+                }
+
+                el.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    trigger();
+                });
+                el.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        trigger();
+                    }
+                });
+            });
+        }
+
+        window.XiaoGuBindLikes = bindLikes;
+        bindLikes(document);
     }());
 </script>
 

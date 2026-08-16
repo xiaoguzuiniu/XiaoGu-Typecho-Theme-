@@ -790,6 +790,29 @@ a:hover {
     fill: currentColor;
 }
 
+.post-like {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.post-like.is-liked {
+    color: #ff8055;
+}
+
+.post-like.is-processing {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.post-like svg {
+    transition: transform 0.2s ease;
+}
+
+.post-like:active svg {
+    transform: scale(1.15);
+}
+
 .post-tags {
     display: flex;
     flex-wrap: wrap;
@@ -955,6 +978,29 @@ a:hover {
     height: 13px;
     flex: 0 0 13px;
     fill: currentColor;
+}
+
+.moment-like {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.moment-like.is-liked {
+    color: #ff8055;
+}
+
+.moment-like.is-processing {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.moment-like svg {
+    transition: transform 0.2s ease;
+}
+
+.moment-like:active svg {
+    transform: scale(1.15);
 }
 
 .moment-tags {

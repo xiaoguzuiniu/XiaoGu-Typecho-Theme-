@@ -1,6 +1,73 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
+/**
+ * 主题初始化：拦截前端 AJAX 请求（浏览量记录、点赞切换）。
+ *
+ * @param \Widget\Archive $archive
+ */
+function themeInit($archive)
+{
+    $action = isset($_GET['xiaogu_action']) ? $_GET['xiaogu_action'] : '';
+    $cid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
+
+    if ($cid <= 0 || !in_array($action, ['view', 'like'], true)) {
+        return;
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+        $db = \Typecho\Db::get();
+
+        if ($action === 'view') {
+            $cookieName = 'xiaogu_view_' . $cid;
+            if (empty($_COOKIE[$cookieName])) {
+                $row = $db->fetchRow($db->select('int_value')->from('table.fields')
+                    ->where('cid = ? AND name = ?', $cid, 'views'));
+                $count = $row ? intval($row['int_value']) : 0;
+                $count++;
+                saveIntField($db, $cid, 'views', $count);
+                setcookie($cookieName, '1', 0, '/');
+            }
+
+            $row = $db->fetchRow($db->select('int_value')->from('table.fields')
+                ->where('cid = ? AND name = ?', $cid, 'views'));
+            $count = $row ? intval($row['int_value']) : 0;
+
+            echo json_encode(['success' => true, 'count' => $count]);
+            exit;
+        }
+
+        if ($action === 'like') {
+            $cookieName = 'xiaogu_like_' . $cid;
+            $liked = !empty($_COOKIE[$cookieName]);
+
+            $row = $db->fetchRow($db->select('int_value')->from('table.fields')
+                ->where('cid = ? AND name = ?', $cid, 'likes'));
+            $count = $row ? intval($row['int_value']) : 0;
+
+            if ($liked) {
+                $count = max(0, $count - 1);
+                saveIntField($db, $cid, 'likes', $count);
+                setcookie($cookieName, '', time() - 3600, '/');
+                $liked = false;
+            } else {
+                $count++;
+                saveIntField($db, $cid, 'likes', $count);
+                setcookie($cookieName, '1', 0, '/');
+                $liked = true;
+            }
+
+            echo json_encode(['success' => true, 'liked' => $liked, 'count' => $count]);
+            exit;
+        }
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
+}
+
 function themeConfig($form)
 {
     $browserTitle = new \Typecho\Widget\Helper\Form\Element\Text(
@@ -107,4 +174,102 @@ function getPostCover($widget)
     }
 
     return '';
+}
+
+/**
+ * 获取文章浏览量。
+ *
+ * @param \Widget\Base\Contents $widget
+ * @return int
+ */
+function getPostViews($widget)
+{
+    return max(0, (int) $widget->fields->views);
+}
+
+/**
+ * 获取文章点赞数。
+ *
+ * @param \Widget\Base\Contents $widget
+ * @return int
+ */
+function getPostLikes($widget)
+{
+    return max(0, (int) $widget->fields->likes);
+}
+
+/**
+ * 判断当前访客是否已对指定文章点赞。
+ *
+ * @param int $cid
+ * @return bool
+ */
+function isPostLiked(int $cid)
+{
+    return !empty($_COOKIE['xiaogu_like_' . $cid]);
+}
+
+/**
+ * 将整型自定义字段写入或更新到 fields 表。
+ *
+ * @param \Typecho\Db $db
+ * @param int    $cid
+ * @param string $name
+ * @param int    $value
+ */
+function saveIntField($db, int $cid, string $name, int $value)
+{
+    $exists = $db->fetchRow($db->select('cid')->from('table.fields')
+        ->where('cid = ? AND name = ?', $cid, $name));
+
+    if ($exists) {
+        $db->query($db->update('table.fields')
+            ->rows([
+                'type'        => 'int',
+                'str_value'   => null,
+                'float_value' => null,
+                'int_value'   => $value,
+            ])
+            ->where('cid = ? AND name = ?', $cid, $name));
+    } else {
+        $db->query($db->insert('table.fields')
+            ->rows([
+                'cid'         => $cid,
+                'name'        => $name,
+                'type'        => 'int',
+                'str_value'   => null,
+                'int_value'   => $value,
+                'float_value' => 0,
+            ]));
+    }
+}
+
+/**
+ * 记录文章浏览量（同一浏览器会话内每篇文章只计一次）。
+ *
+ * @param \Widget\Base\Contents $widget
+ */
+function recordPostView($widget)
+{
+    $cid = (int) $widget->cid;
+    if ($cid <= 0) {
+        return;
+    }
+
+    $cookieName = 'xiaogu_view_' . $cid;
+    if (!empty($_COOKIE[$cookieName])) {
+        return;
+    }
+
+    try {
+        $db = \Typecho\Db::get();
+        $current = $db->fetchRow($db->select('int_value')->from('table.fields')
+            ->where('cid = ? AND name = ?', $cid, 'views'));
+        $count = $current ? intval($current['int_value']) : 0;
+        $count++;
+        saveIntField($db, $cid, 'views', $count);
+        setcookie($cookieName, '1', 0, '/');
+    } catch (\Exception $e) {
+        // 记录失败时不影响页面渲染
+    }
 }

@@ -1,6 +1,10 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
+if ($this->is('post')) {
+    recordPostView($this);
+}
+
 $browserTitle = trim((string) $this->options->browserTitle);
 if ($browserTitle === '') {
     $browserTitle = (string) $this->options->title;
