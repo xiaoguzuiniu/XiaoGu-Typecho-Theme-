@@ -192,65 +192,9 @@ if ($browserTitle === '') {
         </div>
     </div>
 
-    <button class="book-toggle" id="book-toggle" type="button"
-            aria-controls="book-panel-left book-panel-right" aria-expanded="false">
-        <span class="book-toggle-icon" aria-hidden="true">⇆</span>
-        <span class="book-toggle-label">展开两侧书页</span>
-    </button>
 </div>
 
 <script>
-    (function () {
-        const stage = document.getElementById('book-stage');
-        const toggle = document.getElementById('book-toggle');
-        const panels = stage ? stage.querySelectorAll('.book-panel') : [];
-        const storageKey = 'xiaogu-book-open';
-
-        if (!stage || !toggle || !panels.length) return;
-
-        function setBookOpen(open, persist) {
-            stage.classList.toggle('is-book-open', open);
-            toggle.setAttribute('aria-expanded', String(open));
-            toggle.querySelector('.book-toggle-label').textContent = open ? '收起两侧书页' : '展开两侧书页';
-
-            panels.forEach(function (panel) {
-                panel.setAttribute('aria-hidden', String(!open));
-                if (open) {
-                    panel.removeAttribute('inert');
-                } else {
-                    panel.setAttribute('inert', '');
-                }
-            });
-
-            if (persist) {
-                try {
-                    window.localStorage.setItem(storageKey, open ? '1' : '0');
-                } catch (error) {
-                    // 本地存储不可用时仍保留当前页面内的展开状态。
-                }
-            }
-        }
-
-        toggle.addEventListener('click', function () {
-            setBookOpen(!stage.classList.contains('is-book-open'), true);
-        });
-
-        let savedOpen = false;
-        try {
-            savedOpen = window.localStorage.getItem(storageKey) === '1';
-        } catch (error) {
-            savedOpen = false;
-        }
-
-        stage.classList.add('is-restoring-book-state');
-        setBookOpen(savedOpen, false);
-        window.requestAnimationFrame(function () {
-            window.requestAnimationFrame(function () {
-                stage.classList.remove('is-restoring-book-state');
-            });
-        });
-    }());
-
     (function () {
         const mainColumn = document.querySelector('.main-column');
         const intro = mainColumn ? mainColumn.querySelector('.home-intro') : null;

@@ -14,6 +14,7 @@ $pageTitle = (string) $this->title;
 $pageSlug = (string) $this->slug;
 $isPost = $this->is('post');
 $isGuestbook = $this->is('page', 'guestbook');
+$bookPanelsOpen = $isPost && (int) $this->commentsNum > 0;
 
 $profileName = trim((string) $this->options->profileName);
 $profileSignature = trim((string) $this->options->profileSignature);
@@ -43,7 +44,7 @@ if ($profileSignature === '') {
 </head>
 
 <body>
-<div class="book-stage" id="book-stage">
+<div class="book-stage<?php if ($bookPanelsOpen): ?> is-book-open<?php endif; ?>" id="book-stage">
     <?php $this->need('book-panels.php'); ?>
 
     <div class="site-shell">
@@ -119,60 +120,9 @@ if ($profileSignature === '') {
         </div>
     </div>
 
-    <button class="book-toggle" id="book-toggle" type="button"
-            aria-controls="book-panel-left book-panel-right" aria-expanded="false">
-        <span class="book-toggle-icon" aria-hidden="true">⇆</span>
-        <span class="book-toggle-label">展开两侧书页</span>
-    </button>
 </div>
 
 <script>
-    (function () {
-        const stage = document.getElementById('book-stage');
-        const toggle = document.getElementById('book-toggle');
-        const panels = stage ? stage.querySelectorAll('.book-panel') : [];
-        const storageKey = 'xiaogu-book-open';
-        if (!stage || !toggle || !panels.length) return;
-
-        function setBookOpen(open, persist) {
-            stage.classList.toggle('is-book-open', open);
-            toggle.setAttribute('aria-expanded', String(open));
-            toggle.querySelector('.book-toggle-label').textContent = open ? '收起两侧书页' : '展开两侧书页';
-            panels.forEach(function (panel) {
-                panel.setAttribute('aria-hidden', String(!open));
-                if (open) panel.removeAttribute('inert');
-                else panel.setAttribute('inert', '');
-            });
-
-            if (persist) {
-                try {
-                    window.localStorage.setItem(storageKey, open ? '1' : '0');
-                } catch (error) {
-                    // 本地存储不可用时仍保留当前页面状态。
-                }
-            }
-        }
-
-        toggle.addEventListener('click', function () {
-            setBookOpen(!stage.classList.contains('is-book-open'), true);
-        });
-
-        let savedOpen = false;
-        try {
-            savedOpen = window.localStorage.getItem(storageKey) === '1';
-        } catch (error) {
-            savedOpen = false;
-        }
-
-        stage.classList.add('is-restoring-book-state');
-        setBookOpen(savedOpen, false);
-        window.requestAnimationFrame(function () {
-            window.requestAnimationFrame(function () {
-                stage.classList.remove('is-restoring-book-state');
-            });
-        });
-    }());
-
     (function () {
         const pageColumn = document.querySelector('.page-column');
         if (!pageColumn) return;

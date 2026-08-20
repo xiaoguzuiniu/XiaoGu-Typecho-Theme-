@@ -1,4 +1,9 @@
-<aside class="book-panel book-panel-left" id="book-panel-left" aria-label="网站目录" aria-hidden="true" inert>
+<?php
+$bookPanelsOpen = isset($bookPanelsOpen) && $bookPanelsOpen;
+?>
+
+<aside class="book-panel book-panel-left" id="book-panel-left" aria-label="网站目录"
+       aria-hidden="<?php echo $bookPanelsOpen ? 'false' : 'true'; ?>"<?php if (!$bookPanelsOpen): ?> inert<?php endif; ?>>
     <div class="book-page-inner">
         <span class="book-page-number">01</span>
         <p class="book-eyebrow">CONTENTS</p>
@@ -27,7 +32,8 @@
     </div>
 </aside>
 
-<aside class="book-panel book-panel-right" id="book-panel-right" aria-label="文章书签" aria-hidden="true" inert>
+<aside class="book-panel book-panel-right" id="book-panel-right" aria-label="文章书签"
+       aria-hidden="<?php echo $bookPanelsOpen ? 'false' : 'true'; ?>"<?php if (!$bookPanelsOpen): ?> inert<?php endif; ?>>
     <div class="book-page-inner">
         <span class="book-page-number">02</span>
         <p class="book-eyebrow">BOOKMARKS</p>
