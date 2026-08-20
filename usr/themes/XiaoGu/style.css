@@ -1,4 +1,4 @@
-:root {
+﻿:root {
     --page: #efefff;
     --surface: #ffffff;
     --sidebar: #f7f7ff;
@@ -1328,56 +1328,210 @@ a:hover {
     margin-top: 30px;
 }
 
-.comment-fields {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.comment-fields label,
-.comment-textarea {
-    display: flex;
-    color: #737895;
-    font-size: 11px;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.comment-fields input,
-.comment-textarea textarea {
-    width: 100%;
-    padding: 9px 10px;
+.comment-card {
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+.comment-fields {
+    display: flex;
+}
+
+.comment-fields input {
+    flex: 1;
+    padding: 14px 18px;
+    border: 0;
     outline: 0;
-    background: #fff;
+    background: transparent;
     color: var(--text);
     font: inherit;
+    font-size: 14px;
+    min-width: 0;
+}
+
+.comment-fields input::placeholder {
+    color: var(--muted);
+}
+
+.comment-fields input:focus {
+    background: rgba(0,0,0,0.015);
 }
 
 .comment-textarea {
-    margin-top: 12px;
+    padding: 0;
 }
 
 .comment-textarea textarea {
-    resize: vertical;
+    width: 100%;
+    padding: 14px 18px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    outline: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    resize: none;
+    min-height: 80px;
 }
 
-.comment-fields input:focus,
-.comment-textarea textarea:focus {
-    border-color: rgba(76, 76, 255, 0.45);
-    box-shadow: 0 0 0 3px rgba(76, 76, 255, 0.08);
+.comment-textarea textarea::placeholder {
+    color: var(--muted);
+}
+
+.comment-actions {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+}
+
+.emoji-toggle {
+    padding: 4px 8px;
+    border: 0;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.2s;
+    line-height: 1;
+}
+
+.emoji-toggle:hover {
+    opacity: 1;
+}
+
+.emoji-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 8px 14px 12px;
+}
+
+.emoji-picker span {
+    font-size: 22px;
+    cursor: pointer;
+    padding: 3px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    line-height: 1.2;
+}
+
+.emoji-picker span:hover {
+    background: var(--primary-soft);
 }
 
 .comment-submit {
-    margin-top: 12px;
-    padding: 8px 18px;
+    margin-left: auto;
+    padding: 6px 16px;
     border: 0;
     border-radius: 7px;
-    background: var(--primary);
-    color: #fff;
-    font-size: 12px;
+    background: transparent;
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
+    transition: background 0.2s;
+}
+
+.comment-submit:hover {
+    background: rgba(76,76,255,0.08);
+}
+
+.comment-logged-in {
+    padding: 12px 18px;
+    margin: 0;
+    font-size: 14px;
+    border-bottom: 1px solid var(--line);
+}
+
+.post-comment-card {
+    min-height: 290px;
+    border-color: var(--line);
+    border-radius: 15px;
+    padding-bottom: 12px;
+    background: var(--sidebar);
+}
+
+.post-comment-card .comment-fields {
+    height: 58px;
+}
+
+.post-comment-card .comment-fields input {
+    width: 33.333%;
+    padding: 0 15px;
+    color: var(--text);
+    font-size: 14px;
+}
+
+.post-comment-card .comment-fields input::placeholder {
+    color: #b9bbca;
+    opacity: 1;
+}
+
+.post-comment-card .comment-fields input:focus {
+    background: transparent;
+}
+
+.post-comment-card .comment-textarea textarea {
+    display: block;
+    min-height: 98px;
+    padding: 12px 15px 8px;
+    border-top: 0;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.post-comment-card .comment-textarea textarea::placeholder {
+    color: #b9bbca;
+    opacity: 1;
+}
+
+.post-comment-card .comment-actions {
+    min-height: 44px;
+    padding: 4px 14px 6px;
+}
+
+.post-comment-card .emoji-toggle {
+    padding: 4px;
+    color: #aeb1c0;
+    font-family: Arial, sans-serif;
+    font-size: 24px;
+    font-weight: 400;
+    opacity: 0.65;
+}
+
+.post-comment-card .comment-submit {
+    padding: 5px 10px;
+    color: #c8bfd8;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.post-comment-card .comment-submit:hover {
+    color: var(--primary);
+    background: transparent;
+}
+
+.post-comment-card .emoji-picker {
+    display: grid;
+    grid-template-columns: repeat(20, minmax(0, 1fr));
+    gap: 2px 1px;
+    padding: 0 14px;
+}
+
+.post-comment-card .emoji-picker[hidden] {
+    display: none;
+}
+
+.post-comment-card .emoji-picker span {
+    min-width: 0;
+    padding: 0;
+    font-size: 21px;
+    line-height: 1.15;
+    text-align: center;
 }
 
 .site-sidebar {
