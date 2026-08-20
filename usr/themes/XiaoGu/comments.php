@@ -9,9 +9,19 @@ $commentsLabel = $isGuestbookComments ? '留言' : '评论';
     <?php $this->comments()->to($comments); ?>
 
     <?php if ($comments->have()): ?>
-        <h2><?php $this->commentsNum('还没有' . $commentsLabel, '已有 1 条' . $commentsLabel, '已有 %d 条' . $commentsLabel); ?></h2>
-        <?php $comments->listComments(); ?>
-        <?php $comments->pageNav('上一页', '下一页'); ?>
+        <?php if ($isGuestbookComments): ?>
+            <h2><?php $this->commentsNum('还没有' . $commentsLabel, '已有 1 条' . $commentsLabel, '已有 %d 条' . $commentsLabel); ?></h2>
+            <?php $comments->listComments(); ?>
+            <?php $comments->pageNav('上一页', '下一页'); ?>
+        <?php else: ?>
+            <div class="post-comments-source" id="post-comments-source">
+                <?php $comments->listComments([
+                    'dateFormat' => 'm-d H:i',
+                    'avatarSize' => 24
+                ]); ?>
+                <?php $comments->pageNav('上一页', '下一页'); ?>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($this->allow('comment')): ?>

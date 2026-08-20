@@ -124,6 +124,134 @@ if ($profileSignature === '') {
 
 <script>
     (function () {
+        const commentForm = document.getElementById('comment-form');
+        const response = commentForm ? commentForm.closest('.respond') : null;
+        const cancelLink = document.getElementById('cancel-comment-reply-link');
+        const pageColumn = document.querySelector('.page-column');
+        if (!response || !commentForm) return;
+
+        function setReplyParent(coid) {
+            let parentInput = commentForm.querySelector('input[name="parent"]');
+            if (coid) {
+                if (!parentInput) {
+                    parentInput = document.createElement('input');
+                    parentInput.type = 'hidden';
+                    parentInput.name = 'parent';
+                    commentForm.appendChild(parentInput);
+                }
+                parentInput.value = coid;
+            } else if (parentInput) {
+                parentInput.remove();
+            }
+        }
+
+        function focusResponse() {
+            const textarea = commentForm.querySelector('textarea[name="text"]');
+            if (pageColumn) {
+                const columnTop = pageColumn.getBoundingClientRect().top;
+                const responseTop = response.getBoundingClientRect().top;
+                pageColumn.scrollTop = Math.max(0, pageColumn.scrollTop + responseTop - columnTop - 18);
+            }
+            if (textarea) textarea.focus();
+        }
+
+        function beginReply(htmlId, coid) {
+            setReplyParent(coid);
+            response.dataset.replyTo = htmlId;
+            if (cancelLink) cancelLink.style.display = '';
+            focusResponse();
+            return false;
+        }
+
+        function cancelReply() {
+            setReplyParent(null);
+            delete response.dataset.replyTo;
+            if (cancelLink) cancelLink.style.display = 'none';
+            focusResponse();
+            return false;
+        }
+
+        document.addEventListener('click', function (event) {
+            const replyLink = event.target.closest('.book-comment-list .comment-reply a');
+            if (!replyLink) return;
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            const comment = replyLink.closest('.comment-body');
+            const replyUrl = new URL(replyLink.href, window.location.href);
+            const coid = replyUrl.searchParams.get('replyTo');
+            if (comment && coid) beginReply(comment.id, coid);
+        }, true);
+
+        if (cancelLink) {
+            cancelLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                cancelReply();
+            }, true);
+        }
+
+        if (window.TypechoComment) {
+            window.TypechoComment.reply = function (htmlId, coid) {
+                return beginReply(htmlId, coid);
+            };
+            window.TypechoComment.cancelReply = cancelReply;
+        }
+    }());
+
+    (function () {
+        const source = document.getElementById('post-comments-source');
+        const sourceList = source ? source.querySelector('.comment-list') : null;
+        const leftPage = document.querySelector('.book-comments-page-left');
+        const rightPage = document.querySelector('.book-comments-page-right');
+        const leftList = leftPage ? leftPage.querySelector('.book-comment-list') : null;
+        const rightList = rightPage ? rightPage.querySelector('.book-comment-list') : null;
+        const desktop = window.matchMedia('(min-width: 1520px)');
+        if (!source || !sourceList || !leftPage || !rightPage || !leftList || !rightList) return;
+
+        const comments = Array.from(sourceList.children);
+        const navigator = source.querySelector('.page-navigator');
+
+        function restoreComments() {
+            comments.forEach(function (comment) {
+                sourceList.appendChild(comment);
+            });
+            if (navigator) source.appendChild(navigator);
+            leftList.replaceChildren();
+            rightList.replaceChildren();
+            leftPage.scrollTop = 0;
+            rightPage.scrollTop = 0;
+        }
+
+        function distributeComments() {
+            restoreComments();
+            if (!desktop.matches) return;
+
+            let useRightPage = false;
+            comments.forEach(function (comment) {
+                if (useRightPage) {
+                    rightList.appendChild(comment);
+                    return;
+                }
+
+                leftList.appendChild(comment);
+                if (leftPage.scrollHeight > leftPage.clientHeight) {
+                    leftList.removeChild(comment);
+                    rightList.appendChild(comment);
+                    useRightPage = true;
+                }
+            });
+
+            if (navigator) rightPage.appendChild(navigator);
+        }
+
+        distributeComments();
+        desktop.addEventListener('change', distributeComments);
+        window.addEventListener('load', distributeComments, { once: true });
+    }());
+
+    (function () {
         const pageColumn = document.querySelector('.page-column');
         if (!pageColumn) return;
 
@@ -140,20 +268,34 @@ if ($profileSignature === '') {
             if (!target) return;
 
             resetOuterScroll();
+            const bookPage = target.closest('.book-comments-page');
+            if (bookPage) {
+                const pageTop = bookPage.getBoundingClientRect().top;
+                const targetTop = target.getBoundingClientRect().top;
+                bookPage.scrollTop = Math.max(0, bookPage.scrollTop + targetTop - pageTop - 18);
+                resetOuterScroll();
+                return;
+            }
+
             const columnTop = pageColumn.getBoundingClientRect().top;
             const targetTop = target.getBoundingClientRect().top;
             pageColumn.scrollTop = Math.max(0, pageColumn.scrollTop + targetTop - columnTop - 18);
             resetOuterScroll();
         }
 
-        function hideBrokenAvatars() {
+        function restoreBrokenAvatars() {
+            const fallbackAvatarUrl = '<?php $this->options->themeUrl('assets/favicon.svg'); ?>';
+
             document.querySelectorAll('.comment-author .avatar').forEach(function (avatar) {
-                function hideAvatar() {
-                    avatar.style.display = 'none';
+                function useFallbackAvatar() {
+                    if (avatar.dataset.fallbackApplied === 'true') return;
+                    avatar.dataset.fallbackApplied = 'true';
+                    avatar.src = fallbackAvatarUrl;
+                    avatar.style.display = '';
                 }
 
-                avatar.addEventListener('error', hideAvatar, { once: true });
-                if (avatar.complete && avatar.naturalWidth === 0) hideAvatar();
+                avatar.addEventListener('error', useFallbackAvatar, { once: true });
+                if (avatar.complete && avatar.naturalWidth === 0) useFallbackAvatar();
             });
         }
 
@@ -161,7 +303,7 @@ if ($profileSignature === '') {
             window.requestAnimationFrame(function () {
                 window.requestAnimationFrame(function () {
                     positionCommentAnchor();
-                    hideBrokenAvatars();
+                    restoreBrokenAvatars();
                 });
             });
         }

@@ -94,9 +94,7 @@ a:hover {
     width: clamp(220px, calc((100vw - 1080px) / 2 - 20px), 360px);
     overflow: hidden;
     border: 1px solid rgba(102, 109, 175, 0.14);
-    background:
-        repeating-linear-gradient(0deg, transparent 0 30px, rgba(105, 112, 172, 0.045) 30px 31px),
-        linear-gradient(135deg, #fffef9, #f5f3ff);
+    background: var(--sidebar);
     box-shadow: 0 28px 65px rgba(53, 55, 126, 0.14);
     opacity: 0;
     visibility: hidden;
@@ -187,6 +185,96 @@ a:hover {
 
 .book-page-inner::-webkit-scrollbar {
     display: none;
+}
+
+.book-comments-page {
+    padding: 18px 16px;
+}
+
+.book-comments-page-left {
+    overflow: hidden;
+}
+
+.book-comments-page-right {
+    overflow-y: auto;
+}
+
+.book-comments-page .book-comment-list li {
+    margin: 0 0 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.book-comments-page .book-comment-list li li {
+    margin: 18px 0 0 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.book-comment-list .comment-author {
+    display: inline;
+    color: #a5a4a0;
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.book-comment-list .comment-author .avatar {
+    width: 22px;
+    height: 22px;
+    margin-right: 9px;
+}
+
+.book-comment-list .comment-author .fn {
+    font-style: normal;
+}
+
+.book-comment-list .comment-meta {
+    display: inline;
+    margin-left: 6px;
+    color: #aaa9a4;
+    font-size: 12px;
+}
+
+.book-comment-list .comment-content {
+    margin: 4px 0 0 31px;
+    color: #33332f;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.book-comment-list .comment-content p {
+    margin: 0;
+}
+
+.book-comment-list .comment-reply {
+    margin: 5px 0 0 31px;
+    color: #b0afaa;
+    font-size: 11px;
+}
+
+.book-comment-list .comment-reply a {
+    position: relative;
+    z-index: 3;
+    display: inline-block;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.book-comment-list .comment-reply a:hover {
+    color: var(--primary);
+}
+
+.book-comments-page .page-navigator {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0 0 31px;
+    font-size: 11px;
 }
 
 .book-page-number {
@@ -1266,6 +1354,39 @@ a:hover {
     margin-top: 30px;
 }
 
+.cancel-comment-reply {
+    text-align: right;
+    font-size: 0;
+    line-height: 0;
+}
+
+.cancel-comment-reply a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 4px 8px 0;
+    padding: 6px 11px;
+    border: 1px solid rgba(76, 76, 255, 0.14);
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 11px;
+    line-height: 1;
+    transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.cancel-comment-reply a::before {
+    content: "×";
+    font-size: 15px;
+    line-height: 0.8;
+}
+
+.cancel-comment-reply a:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
 .comment-card {
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -1767,6 +1888,10 @@ a:hover {
 @media (min-width: 1520px) {
     .book-panel {
         display: block;
+    }
+
+    .post-comments-source {
+        display: none;
     }
 }
 
