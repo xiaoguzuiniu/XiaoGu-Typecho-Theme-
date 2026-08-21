@@ -1012,6 +1012,17 @@ a:hover {
     transition: color 0.2s ease;
 }
 
+.moment-comment-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
+.moment-comment-toggle:hover,
+.moment-comment-toggle:focus-visible {
+    color: var(--primary);
+    outline: none;
+}
+
 .moment-like.is-liked {
     color: #ff8055;
 }
@@ -1042,6 +1053,182 @@ a:hover {
     border-radius: 5px;
     background: #e9eaf0;
     color: #858aa4;
+}
+
+.moment-social,
+.moment-comment-form {
+    position: relative;
+    margin: 6px 0 0 54px;
+    border-radius: 5px;
+    background: #f1f2f6;
+    color: #30364f;
+    font-size: 12px;
+}
+
+.moment-social::before {
+    position: absolute;
+    top: -6px;
+    right: 15px;
+    width: 0;
+    height: 0;
+    border-right: 7px solid transparent;
+    border-bottom: 7px solid #f1f2f6;
+    border-left: 7px solid transparent;
+    content: "";
+}
+
+.moment-comments {
+    padding: 6px 10px;
+    border-top: 1px solid #e3e5ed;
+}
+
+.moment-comments:first-child {
+    border-top: 0;
+}
+
+.moment-comment-list,
+.moment-comment-list .moment-comment-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.moment-comments .comment-body,
+.moment-comments .comment-body .comment-body {
+    margin: 2px 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #30364f;
+    cursor: pointer;
+    line-height: 1.6;
+}
+
+.moment-comments .comment-author,
+.moment-comments .comment-content,
+.moment-reply-label {
+    display: inline;
+    margin: 0;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.moment-comments .comment-author .avatar,
+.moment-comments .comment-meta,
+.moment-comments .comment-reply {
+    display: none !important;
+}
+
+.moment-comments .comment-author .fn {
+    color: #576b95;
+    font-style: normal;
+    font-weight: 600;
+}
+
+.moment-comments .comment-parent > .comment-author .fn::after {
+    color: #30364f;
+    content: "：";
+}
+
+.moment-comments .comment-child > .comment-author .fn::after {
+    content: "";
+}
+
+.moment-reply-label b {
+    color: #576b95;
+    font-weight: 600;
+}
+
+.moment-comments .comment-content p {
+    display: inline;
+    margin: 0;
+}
+
+.moment-comments .comment-children {
+    margin: 0;
+}
+
+.moment-comment-form {
+    padding: 8px;
+}
+
+.moment-comment-form[hidden] {
+    display: none;
+}
+
+.moment-comment-identity {
+    display: grid;
+    margin-bottom: 7px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.moment-comment-identity input,
+.moment-comment-compose textarea {
+    min-width: 0;
+    border: 1px solid #dfe2ea;
+    border-radius: 4px;
+    outline: 0;
+    background: #fff;
+    color: #30364f;
+    font: inherit;
+}
+
+.moment-comment-identity input {
+    padding: 6px 7px;
+}
+
+.moment-comment-compose {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.moment-comment-compose textarea {
+    min-height: 30px;
+    padding: 6px 8px;
+    flex: 1;
+    resize: vertical;
+}
+
+.moment-comment-identity input:focus,
+.moment-comment-compose textarea:focus {
+    border-color: #8a98b7;
+}
+
+.moment-comment-compose button {
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    border: 0;
+    border-radius: 4px;
+    background: #576b95;
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.moment-comment-compose .moment-comment-cancel {
+    background: transparent;
+    color: #8d92a4;
+}
+
+.moment-comment-compose button:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.moment-comment-status {
+    display: block;
+    min-height: 0;
+    margin-top: 4px;
+    color: #9a6070;
+    font-size: 10px;
+}
+
+.moment-comment-status:empty {
+    display: none;
 }
 
 .post-list-end {
@@ -2008,6 +2195,7 @@ button.activity-day:focus-visible {
         min-height: 0;
         flex: 1 1 auto;
         overflow-y: auto;
+        overflow-anchor: none;
         overscroll-behavior: contain;
         scrollbar-width: none;
         -ms-overflow-style: none;
@@ -2180,7 +2368,9 @@ button.activity-day:focus-visible {
     }
 
     .moment-content,
-    .moment-foot {
+    .moment-foot,
+    .moment-social,
+    .moment-comment-form {
         margin-left: 0;
     }
 

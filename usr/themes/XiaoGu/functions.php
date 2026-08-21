@@ -2,7 +2,7 @@
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 /**
- * 主题初始化：拦截前端 AJAX 请求（浏览量记录、点赞切换）。
+ * 主题初始化：拦截前端 AJAX 请求（浏览量记录、点赞切换、动态评论）。
  *
  * @param \Widget\Archive $archive
  */
@@ -11,7 +11,7 @@ function themeInit($archive)
     $action = isset($_GET['xiaogu_action']) ? $_GET['xiaogu_action'] : '';
     $cid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
 
-    if ($cid <= 0 || !in_array($action, ['view', 'like'], true)) {
+    if ($cid <= 0 || !in_array($action, ['view', 'like', 'moment_comment'], true)) {
         return;
     }
 
@@ -19,6 +19,104 @@ function themeInit($archive)
 
     try {
         $db = \Typecho\Db::get();
+
+        if ($action === 'moment_comment') {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new \Exception('评论请求方式错误');
+            }
+
+            $post = \Widget\Archive::allocWithAlias(
+                'moment-comment-target-' . $cid,
+                'type=single',
+                ['cid' => $cid],
+                false
+            );
+            if (!$post || !$post->have() || !$post->is('post')) {
+                throw new \Exception('找不到要评论的动态');
+            }
+
+            $input = [
+                'type' => 'comment',
+                'permalink' => $post->path,
+            ];
+            foreach (['author', 'mail', 'url', 'text', 'parent', '_'] as $field) {
+                if (isset($_POST[$field]) && is_scalar($_POST[$field])) {
+                    $input[$field] = (string) $_POST[$field];
+                }
+            }
+
+            $options = \Widget\Options::alloc();
+            $security = \Widget\Security::alloc();
+            $user = \Widget\User::alloc();
+            if (!$post->allow('comment')) {
+                throw new \Exception('此动态已关闭评论');
+            }
+
+            if (
+                !$user->pass('editor', true)
+                && (int) $post->authorId !== (int) $user->uid
+                && $options->commentsPostIntervalEnable
+            ) {
+                $latestComment = $db->fetchRow(
+                    $db->select('created')
+                        ->from('table.comments')
+                        ->where('cid = ? AND ip = ?', $cid, \Typecho\Request::getInstance()->getIp())
+                        ->order('created', \Typecho\Db::SORT_DESC)
+                        ->limit(1)
+                );
+                $elapsed = $latestComment ? (int) $options->time - (int) $latestComment['created'] : 0;
+                if ($elapsed > 0 && $elapsed < (int) $options->commentsPostInterval) {
+                    throw new \Exception('您的评论过于频繁，请稍后再试');
+                }
+            }
+
+            $antiSpamEnabled = (bool) $options->commentsAntiSpam;
+            if ($antiSpamEnabled) {
+                $submittedToken = isset($input['_']) ? (string) $input['_'] : '';
+                $expectedToken = $security->getToken(\Typecho\Request::getInstance()->getReferer());
+                if ($submittedToken === '' || !hash_equals($expectedToken, $submittedToken)) {
+                    throw new \Exception('评论安全验证失败，请刷新页面后重试');
+                }
+                $options->commentsAntiSpam = false;
+            }
+
+            $httpRequest = \Typecho\Request::getInstance();
+            $httpResponse = \Typecho\Response::getInstance();
+            $httpRequest->beginSandbox(new \Typecho\Config($input));
+            $httpResponse->beginSandbox();
+
+            try {
+                $feedback = new \Widget\Feedback(
+                    new \Typecho\Widget\Request($httpRequest, new \Typecho\Config($input)),
+                    new \Typecho\Widget\Response($httpRequest, $httpResponse),
+                    ['checkReferer' => false]
+                );
+                $feedback->execute();
+                (function (\Widget\Archive $content) {
+                    $this->content = $content;
+                    $this->comment();
+                })->call($feedback, $post);
+            } catch (\Typecho\Widget\Terminal $e) {
+                // Feedback redirects after a successful insert; the sandbox turns it into a terminal signal.
+            } finally {
+                $httpResponse->endSandbox();
+                $httpRequest->endSandbox();
+                if ($antiSpamEnabled) {
+                    $options->commentsAntiSpam = true;
+                }
+            }
+            if (!$feedback || !$feedback->have()) {
+                throw new \Exception('评论验证失败，请刷新页面后重试');
+            }
+
+            $status = (string) $feedback->status;
+            echo json_encode([
+                'success' => true,
+                'status' => $status,
+                'message' => $status === 'approved' ? '评论成功' : '评论已提交，正在等待审核',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
 
         if ($action === 'view') {
             $cookieName = 'xiaogu_view_' . $cid;
@@ -63,7 +161,11 @@ function themeInit($archive)
             exit;
         }
     } catch (\Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage() ?: '请求处理失败',
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 }

@@ -101,6 +101,16 @@ if ($browserTitle === '') {
                         <?php recordPostView($this); ?>
                         <?php $displayMode = (string) $this->fields->displayMode; ?>
                         <?php if ($displayMode === 'moment'): ?>
+                            <?php \Widget\Comments\Archive::allocWithAlias(
+                                'moment-comments-' . (int) $this->cid,
+                                [
+                                    'parentId' => (int) $this->cid,
+                                    'parentContent' => $this,
+                                    'respondId' => 'moment-respond-' . (int) $this->cid,
+                                    'commentPage' => 0,
+                                    'allowComment' => $this->allow('comment')
+                                ]
+                            )->to($momentComments); ?>
                             <article class="moment-card">
                                 <header class="moment-header">
                                     <?php if ($profileAvatarUrl !== ''): ?>
@@ -122,7 +132,11 @@ if ($browserTitle === '') {
                                 <footer class="moment-foot">
                                     <div class="moment-stats" aria-label="动态数据">
                                         <span title="浏览量"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b><?php echo getPostViews($this); ?></b></span>
-                                        <span title="评论数"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-comment"></use></svg><b><?php $this->commentsNum('0', '1', '%d'); ?></b></span>
+                                        <span class="moment-comment-toggle" title="评论" data-moment-comment-toggle
+                                              role="button" tabindex="0">
+                                            <svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-comment"></use></svg>
+                                            <b><?php $this->commentsNum('0', '1', '%d'); ?></b>
+                                        </span>
                                         <span class="moment-like<?php echo isPostLiked($this->cid) ? ' is-liked' : ''; ?>" title="点赞" data-xiaogu-like="<?php $this->cid(); ?>" role="button" tabindex="0">
                                             <svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-like"></use></svg>
                                             <b data-xiaogu-like-count="<?php $this->cid(); ?>"><?php echo getPostLikes($this); ?></b>
@@ -132,6 +146,42 @@ if ($browserTitle === '') {
                                         <span class="moment-tags"><?php $this->tags(' ', true); ?></span>
                                     <?php endif; ?>
                                 </footer>
+
+                                <?php if ($momentComments->have()): ?>
+                                    <div class="moment-social">
+                                        <div class="moment-comments">
+                                            <?php $momentComments->listComments([
+                                                'before' => '<ul class="moment-comment-list">',
+                                                'after' => '</ul>',
+                                                'avatarSize' => 0,
+                                                'dateFormat' => 'm-d H:i'
+                                            ]); ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($this->allow('comment')): ?>
+                                    <form method="post"
+                                          action="<?php echo htmlspecialchars(rtrim($this->options->siteUrl, '/') . '/?xiaogu_action=moment_comment&cid=' . (int) $this->cid, ENT_QUOTES, 'UTF-8'); ?>"
+                                          class="moment-comment-form" hidden>
+                                        <?php if (!$this->user->hasLogin()): ?>
+                                            <div class="moment-comment-identity">
+                                                <input type="text" name="author" placeholder="昵称"
+                                                       value="<?php $this->remember('author'); ?>" required>
+                                                <input type="email" name="mail" placeholder="邮箱"
+                                                       value="<?php $this->remember('mail'); ?>"<?php if ($this->options->commentsRequireMail): ?> required<?php endif; ?>>
+                                                <input type="url" name="url" placeholder="网址"
+                                                       value="<?php $this->remember('url'); ?>"<?php if ($this->options->commentsRequireUrl): ?> required<?php endif; ?>>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="moment-comment-compose">
+                                            <textarea name="text" rows="1" placeholder="评论" required></textarea>
+                                            <button type="button" class="moment-comment-cancel" hidden>取消回复</button>
+                                            <button type="submit">发送</button>
+                                        </div>
+                                        <span class="moment-comment-status" role="status"></span>
+                                    </form>
+                                <?php endif; ?>
                             </article>
                         <?php else: ?>
                             <?php $postCoverUrl = getPostCover($this); ?>
@@ -204,9 +254,10 @@ if ($browserTitle === '') {
         const desktop = window.matchMedia('(min-width: 901px)');
         let expandedHeight = 0;
         let maxCollapse = 0;
+        let collapse = 0;
         let frame = 0;
 
-        if (!intro || !introContent || !hero || !postList) return;
+        if (!mainColumn || !intro || !introContent || !hero || !postList) return;
 
         function render() {
             frame = 0;
@@ -217,7 +268,6 @@ if ($browserTitle === '') {
                 return;
             }
 
-            const collapse = Math.min(postList.scrollTop, maxCollapse);
             intro.style.height = Math.max(0, expandedHeight - collapse) + 'px';
             introContent.style.transform = 'translate3d(0, ' + (-collapse) + 'px, 0)';
         }
@@ -228,18 +278,19 @@ if ($browserTitle === '') {
 
         function measure() {
             if (!desktop.matches) {
+                collapse = 0;
                 render();
                 return;
             }
 
             expandedHeight = introContent.offsetHeight;
             maxCollapse = Math.min(180, Math.max(0, hero.offsetHeight - 110));
+            collapse = Math.min(collapse, maxCollapse);
             render();
         }
 
-        postList.addEventListener('scroll', requestRender, { passive: true });
         mainColumn.addEventListener('wheel', function (event) {
-            if (!desktop.matches || postList.contains(event.target) || event.ctrlKey) return;
+            if (!desktop.matches || event.ctrlKey) return;
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
 
             let delta = event.deltaY;
@@ -249,13 +300,33 @@ if ($browserTitle === '') {
                 delta *= postList.clientHeight;
             }
 
+            if (delta > 0 && collapse < maxCollapse) {
+                collapse = Math.min(maxCollapse, collapse + delta);
+                requestRender();
+                event.preventDefault();
+                return;
+            }
+
+            if (delta < 0 && postList.scrollTop <= 0 && collapse > 0) {
+                collapse = Math.max(0, collapse + delta);
+                requestRender();
+                event.preventDefault();
+                return;
+            }
+
             const previousScrollTop = postList.scrollTop;
             postList.scrollTop += delta;
-
             if (postList.scrollTop !== previousScrollTop) {
                 event.preventDefault();
             }
         }, { passive: false });
+
+        postList.addEventListener('scroll', function (event) {
+            if (!event.isTrusted && postList.scrollTop === 0 && collapse !== 0) {
+                collapse = 0;
+                requestRender();
+            }
+        }, { passive: true });
 
         window.addEventListener('resize', function () {
             window.requestAnimationFrame(measure);
@@ -304,10 +375,158 @@ if ($browserTitle === '') {
 
                 content.appendChild(gallery);
             });
+
+            scope.querySelectorAll('.moment-card:not([data-comments-ready])').forEach(function (card) {
+                card.setAttribute('data-comments-ready', 'true');
+                card.querySelectorAll('.moment-comment-list .comment-child').forEach(function (comment) {
+                    const children = comment.closest('.comment-children');
+                    const parentComment = children ? children.closest('.comment-body') : null;
+                    const parentAuthor = parentComment
+                        ? parentComment.querySelector(':scope > .comment-author .fn')
+                        : null;
+                    const author = comment.querySelector(':scope > .comment-author');
+                    if (!parentAuthor || !author || author.nextElementSibling?.classList.contains('moment-reply-label')) return;
+
+                    const label = document.createElement('span');
+                    const name = document.createElement('b');
+                    label.className = 'moment-reply-label';
+                    label.append(' 回复 ');
+                    name.textContent = parentAuthor.textContent.trim();
+                    label.append(name, '：');
+                    author.after(label);
+                });
+            });
         }
 
         window.XiaoGuEnhanceMoments = enhanceMoments;
         enhanceMoments(document);
+    }());
+
+    (function () {
+        const commentRequestReferrer = <?php echo json_encode($this->request->getRequestUrl()); ?>;
+        const commentSecurityToken = <?php echo json_encode($this->security->getToken($this->request->getRequestUrl())); ?>;
+
+        function openCommentForm(card, comment) {
+            const form = card.querySelector('.moment-comment-form');
+            if (!form) return;
+
+            const textarea = form.querySelector('textarea[name="text"]');
+            const cancel = form.querySelector('.moment-comment-cancel');
+            let parent = form.querySelector('input[name="parent"]');
+
+            if (comment) {
+                const coid = comment.id.replace(/^comment-/, '');
+                const author = comment.querySelector(':scope > .comment-author .fn');
+                if (!parent) {
+                    parent = document.createElement('input');
+                    parent.type = 'hidden';
+                    parent.name = 'parent';
+                    form.appendChild(parent);
+                }
+                parent.value = coid;
+                textarea.placeholder = author ? '回复 ' + author.textContent.trim() : '回复';
+                cancel.hidden = false;
+            } else {
+                if (parent) parent.remove();
+                textarea.placeholder = '评论';
+                cancel.hidden = true;
+            }
+
+            form.hidden = false;
+            textarea.focus();
+        }
+
+        function closeCommentForm(form) {
+            const parent = form.querySelector('input[name="parent"]');
+            const textarea = form.querySelector('textarea[name="text"]');
+            const cancel = form.querySelector('.moment-comment-cancel');
+            const status = form.querySelector('.moment-comment-status');
+
+            if (parent) parent.remove();
+            if (textarea) {
+                textarea.placeholder = '评论';
+                textarea.blur();
+            }
+            if (cancel) cancel.hidden = true;
+            if (status) status.textContent = '';
+            form.hidden = true;
+        }
+
+        document.addEventListener('click', function (event) {
+            const toggle = event.target.closest('[data-moment-comment-toggle]');
+            if (toggle) {
+                event.preventDefault();
+                const card = toggle.closest('.moment-card');
+                const form = card && card.querySelector('.moment-comment-form');
+                if (!form) return;
+                if (form.hidden) openCommentForm(card, null);
+                else closeCommentForm(form);
+                return;
+            }
+
+            const comment = event.target.closest('.moment-comments .comment-body');
+            if (comment && !event.target.closest('a')) {
+                openCommentForm(comment.closest('.moment-card'), comment);
+                return;
+            }
+
+            const cancel = event.target.closest('.moment-comment-cancel');
+            if (cancel) {
+                event.preventDefault();
+                closeCommentForm(cancel.closest('.moment-comment-form'));
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            const toggle = event.target.closest('[data-moment-comment-toggle]');
+            if (toggle && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                toggle.click();
+            }
+        });
+
+        document.addEventListener('submit', async function (event) {
+            const form = event.target.closest('.moment-comment-form');
+            if (!form || !('fetch' in window)) return;
+
+            event.preventDefault();
+            const submit = form.querySelector('button[type="submit"]');
+            const status = form.querySelector('.moment-comment-status');
+            submit.disabled = true;
+            status.textContent = '发送中…';
+
+            try {
+                const formData = new FormData(form);
+                formData.set('_', commentSecurityToken);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                    referrer: commentRequestReferrer
+                });
+                let data;
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    throw new Error('服务器返回异常，请稍后重试');
+                }
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || '评论发送失败');
+                }
+
+                if (data.status === 'approved') {
+                    window.location.reload();
+                    return;
+                }
+
+                form.querySelector('textarea[name="text"]').value = '';
+                status.textContent = data.message;
+                submit.disabled = false;
+            } catch (error) {
+                status.textContent = error.message || '发送失败，请稍后重试';
+                submit.disabled = false;
+            }
+        });
     }());
 
     (function () {
@@ -603,7 +822,7 @@ if ($browserTitle === '') {
                 function trigger() {
                     if (el.classList.contains('is-processing')) return;
                     var cid = el.getAttribute('data-xiaogu-like');
-                    var countEl = document.querySelector('[data-xiaogu-like-count="' + cid + '"]');
+                    var countEls = document.querySelectorAll('[data-xiaogu-like-count="' + cid + '"]');
                     el.classList.add('is-processing');
 
                     fetch(siteUrl + '?xiaogu_action=like&cid=' + encodeURIComponent(cid), { credentials: 'same-origin' })
@@ -611,7 +830,9 @@ if ($browserTitle === '') {
                         .then(function (data) {
                             if (data.success) {
                                 el.classList.toggle('is-liked', data.liked);
-                                if (countEl) countEl.textContent = String(data.count);
+                                countEls.forEach(function (countEl) {
+                                    countEl.textContent = String(data.count);
+                                });
                             }
                         })
                         .catch(function () {})
