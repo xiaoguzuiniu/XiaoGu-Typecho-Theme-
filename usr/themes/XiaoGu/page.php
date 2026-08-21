@@ -14,6 +14,7 @@ $pageTitle = (string) $this->title;
 $pageSlug = (string) $this->slug;
 $isPost = $this->is('post');
 $isGuestbook = $this->is('page', 'guestbook');
+$isNeighbors = !$isPost && $pageSlug === 'neighbors';
 $bookPanelsOpen = $isPost && (int) $this->commentsNum > 0;
 
 $profileName = trim((string) $this->options->profileName);
@@ -50,7 +51,7 @@ if ($profileSignature === '') {
     <div class="site-shell">
         <?php $this->need('topbar.php'); ?>
 
-        <div class="content-grid page-layout<?php if ($isGuestbook): ?> guestbook-layout<?php endif; ?>">
+        <div class="content-grid page-layout<?php if ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php endif; ?>">
             <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>" data-damped-scroll>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
@@ -96,6 +97,8 @@ if ($profileSignature === '') {
 
                             <?php $this->need('comments.php'); ?>
                         </div>
+                    <?php elseif ($isNeighbors): ?>
+                        <?php $this->need('neighbors.php'); ?>
                     <?php else: ?>
                         <header class="page-heading">
                             <span class="page-heading-mark" aria-hidden="true">◇</span>

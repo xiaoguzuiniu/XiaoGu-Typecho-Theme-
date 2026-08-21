@@ -2,7 +2,7 @@
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 /**
- * 主题初始化：拦截前端 AJAX 请求（浏览量记录、点赞切换、动态评论）。
+ * 主题初始化：拦截前端 AJAX 请求（浏览量、点赞、动态评论、友链申请）。
  *
  * @param \Widget\Archive $archive
  */
@@ -11,7 +11,7 @@ function themeInit($archive)
     $action = isset($_GET['xiaogu_action']) ? $_GET['xiaogu_action'] : '';
     $cid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
 
-    if ($cid <= 0 || !in_array($action, ['view', 'like', 'moment_comment'], true)) {
+    if ($cid <= 0 || !in_array($action, ['view', 'like', 'moment_comment', 'friend_apply'], true)) {
         return;
     }
 
@@ -19,6 +19,94 @@ function themeInit($archive)
 
     try {
         $db = \Typecho\Db::get();
+
+        if ($action === 'friend_apply') {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new \Exception('申请请求方式错误');
+            }
+
+            $page = \Widget\Archive::allocWithAlias(
+                'friend-apply-target-' . $cid,
+                'type=single',
+                ['cid' => $cid],
+                false
+            );
+            if (!$page || !$page->have() || !$page->is('page') || (string) $page->slug !== 'neighbors') {
+                throw new \Exception('找不到友链申请页面');
+            }
+
+            $fields = [];
+            foreach (['site_name', 'site_url', 'avatar_url', 'description', 'rss_url', 'mail', 'note'] as $field) {
+                $fields[$field] = isset($_POST[$field]) && is_scalar($_POST[$field])
+                    ? trim((string) $_POST[$field])
+                    : '';
+            }
+
+            if ($fields['site_name'] === '' || strlen($fields['site_name']) > 150) {
+                throw new \Exception('请填写正确的网站名称');
+            }
+            if ($fields['description'] === '' || strlen($fields['description']) > 900) {
+                throw new \Exception('请填写 300 字以内的网站描述');
+            }
+            $fields['site_url'] = validateFriendUrl($fields['site_url'], '网站地址', true);
+            $fields['avatar_url'] = validateFriendUrl($fields['avatar_url'], '网站头像地址', false);
+            $fields['rss_url'] = validateFriendUrl($fields['rss_url'], 'RSS 地址', false);
+            if ($fields['mail'] !== '' && !filter_var($fields['mail'], FILTER_VALIDATE_EMAIL)) {
+                throw new \Exception('联系邮箱格式不正确');
+            }
+
+            $captchaA = isset($_POST['captcha_a']) ? (int) $_POST['captcha_a'] : 0;
+            $captchaB = isset($_POST['captcha_b']) ? (int) $_POST['captcha_b'] : 0;
+            $captchaAnswer = isset($_POST['captcha_answer']) ? (int) $_POST['captcha_answer'] : PHP_INT_MIN;
+            $captchaToken = isset($_POST['captcha_token']) && is_scalar($_POST['captcha_token'])
+                ? (string) $_POST['captcha_token']
+                : '';
+            $captchaPayload = $captchaA . ':' . $captchaB . ':' . $cid;
+            $captchaExpected = hash_hmac('sha256', $captchaPayload, (string) \Widget\Options::alloc()->secret);
+            if (
+                $captchaA < 1
+                || $captchaB < 1
+                || !hash_equals($captchaExpected, $captchaToken)
+                || $captchaAnswer !== $captchaA + $captchaB
+            ) {
+                throw new \Exception('验证码计算错误');
+            }
+
+            $application = [
+                '友链申请',
+                '网站名称：' . $fields['site_name'],
+                '网站地址：' . $fields['site_url'],
+                '网站描述：' . $fields['description'],
+            ];
+            if ($fields['avatar_url'] !== '') {
+                $application[] = '头像地址：' . $fields['avatar_url'];
+            }
+            if ($fields['rss_url'] !== '') {
+                $application[] = 'RSS 地址：' . $fields['rss_url'];
+            }
+            if ($fields['note'] !== '') {
+                $application[] = '备注：' . $fields['note'];
+            }
+
+            $input = [
+                'type' => 'comment',
+                'permalink' => $page->path,
+                'author' => $fields['site_name'],
+                'mail' => $fields['mail'],
+                'url' => $fields['site_url'],
+                'text' => implode("\n", $application),
+                '_' => isset($_POST['_']) && is_scalar($_POST['_']) ? (string) $_POST['_'] : '',
+            ];
+            $feedback = submitXiaoGuFeedback($page, $input, false);
+            $status = (string) $feedback->status;
+
+            echo json_encode([
+                'success' => true,
+                'status' => $status,
+                'message' => '友链申请已提交，站长会尽快查看',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
 
         if ($action === 'moment_comment') {
             if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -45,69 +133,7 @@ function themeInit($archive)
                 }
             }
 
-            $options = \Widget\Options::alloc();
-            $security = \Widget\Security::alloc();
-            $user = \Widget\User::alloc();
-            if (!$post->allow('comment')) {
-                throw new \Exception('此动态已关闭评论');
-            }
-
-            if (
-                !$user->pass('editor', true)
-                && (int) $post->authorId !== (int) $user->uid
-                && $options->commentsPostIntervalEnable
-            ) {
-                $latestComment = $db->fetchRow(
-                    $db->select('created')
-                        ->from('table.comments')
-                        ->where('cid = ? AND ip = ?', $cid, \Typecho\Request::getInstance()->getIp())
-                        ->order('created', \Typecho\Db::SORT_DESC)
-                        ->limit(1)
-                );
-                $elapsed = $latestComment ? (int) $options->time - (int) $latestComment['created'] : 0;
-                if ($elapsed > 0 && $elapsed < (int) $options->commentsPostInterval) {
-                    throw new \Exception('您的评论过于频繁，请稍后再试');
-                }
-            }
-
-            $antiSpamEnabled = (bool) $options->commentsAntiSpam;
-            if ($antiSpamEnabled) {
-                $submittedToken = isset($input['_']) ? (string) $input['_'] : '';
-                $expectedToken = $security->getToken(\Typecho\Request::getInstance()->getReferer());
-                if ($submittedToken === '' || !hash_equals($expectedToken, $submittedToken)) {
-                    throw new \Exception('评论安全验证失败，请刷新页面后重试');
-                }
-                $options->commentsAntiSpam = false;
-            }
-
-            $httpRequest = \Typecho\Request::getInstance();
-            $httpResponse = \Typecho\Response::getInstance();
-            $httpRequest->beginSandbox(new \Typecho\Config($input));
-            $httpResponse->beginSandbox();
-
-            try {
-                $feedback = new \Widget\Feedback(
-                    new \Typecho\Widget\Request($httpRequest, new \Typecho\Config($input)),
-                    new \Typecho\Widget\Response($httpRequest, $httpResponse),
-                    ['checkReferer' => false]
-                );
-                $feedback->execute();
-                (function (\Widget\Archive $content) {
-                    $this->content = $content;
-                    $this->comment();
-                })->call($feedback, $post);
-            } catch (\Typecho\Widget\Terminal $e) {
-                // Feedback redirects after a successful insert; the sandbox turns it into a terminal signal.
-            } finally {
-                $httpResponse->endSandbox();
-                $httpRequest->endSandbox();
-                if ($antiSpamEnabled) {
-                    $options->commentsAntiSpam = true;
-                }
-            }
-            if (!$feedback || !$feedback->have()) {
-                throw new \Exception('评论验证失败，请刷新页面后重试');
-            }
+            $feedback = submitXiaoGuFeedback($post, $input);
 
             $status = (string) $feedback->status;
             echo json_encode([
@@ -170,6 +196,97 @@ function themeInit($archive)
     }
 }
 
+function validateFriendUrl(string $url, string $label, bool $required): string
+{
+    if ($url === '') {
+        if ($required) {
+            throw new \Exception('请填写' . $label);
+        }
+        return '';
+    }
+
+    $validated = filter_var($url, FILTER_VALIDATE_URL);
+    $scheme = $validated ? strtolower((string) parse_url($validated, PHP_URL_SCHEME)) : '';
+    if (!$validated || !in_array($scheme, ['http', 'https'], true)) {
+        throw new \Exception($label . '格式不正确');
+    }
+
+    return $validated;
+}
+
+function submitXiaoGuFeedback(\Widget\Archive $content, array $input, bool $requireOpen = true): \Widget\Feedback
+{
+    $db = \Typecho\Db::get();
+    $options = \Widget\Options::alloc();
+    $security = \Widget\Security::alloc();
+    $user = \Widget\User::alloc();
+
+    if ($requireOpen && !$content->allow('comment')) {
+        throw new \Exception('当前内容已关闭提交');
+    }
+
+    if (
+        !$user->pass('editor', true)
+        && (int) $content->authorId !== (int) $user->uid
+        && $options->commentsPostIntervalEnable
+    ) {
+        $latestComment = $db->fetchRow(
+            $db->select('created')
+                ->from('table.comments')
+                ->where('cid = ? AND ip = ?', (int) $content->cid, \Typecho\Request::getInstance()->getIp())
+                ->order('created', \Typecho\Db::SORT_DESC)
+                ->limit(1)
+        );
+        $elapsed = $latestComment ? (int) $options->time - (int) $latestComment['created'] : 0;
+        if ($elapsed > 0 && $elapsed < (int) $options->commentsPostInterval) {
+            throw new \Exception('提交过于频繁，请稍后再试');
+        }
+    }
+
+    $antiSpamEnabled = (bool) $options->commentsAntiSpam;
+    if ($antiSpamEnabled) {
+        $submittedToken = isset($input['_']) ? (string) $input['_'] : '';
+        $expectedToken = $security->getToken(\Typecho\Request::getInstance()->getReferer());
+        if ($submittedToken === '' || !hash_equals($expectedToken, $submittedToken)) {
+            throw new \Exception('安全验证失败，请刷新页面后重试');
+        }
+        $options->commentsAntiSpam = false;
+    }
+
+    $httpRequest = \Typecho\Request::getInstance();
+    $httpResponse = \Typecho\Response::getInstance();
+    $httpRequest->beginSandbox(new \Typecho\Config($input));
+    $httpResponse->beginSandbox();
+    $feedback = null;
+
+    try {
+        $feedback = new \Widget\Feedback(
+            new \Typecho\Widget\Request($httpRequest, new \Typecho\Config($input)),
+            new \Typecho\Widget\Response($httpRequest, $httpResponse),
+            ['checkReferer' => false]
+        );
+        $feedback->execute();
+        (function (\Widget\Archive $target) {
+            $this->content = $target;
+            $this->comment();
+        })->call($feedback, $content);
+    } catch (\Typecho\Widget\Terminal $e) {
+        // Feedback redirects after a successful insert; the sandbox turns it into a terminal signal.
+    } finally {
+        $httpResponse->endSandbox();
+        $httpRequest->endSandbox();
+        if ($antiSpamEnabled) {
+            $options->commentsAntiSpam = true;
+        }
+    }
+
+    if (!$feedback || !$feedback->have()) {
+        throw new \Exception('提交验证失败，请检查填写内容');
+    }
+
+    return $feedback;
+}
+
 function themeConfig($form)
 {
     $browserTitle = new \Typecho\Widget\Helper\Form\Element\Text(
@@ -216,6 +333,24 @@ function themeConfig($form)
         _t('填写完整图片 URL；留空时使用主题自带的雪山图片。')
     );
     $form->addInput($heroImageUrl->addRule('url', _t('请填写正确的头图 URL 地址')));
+
+    $friendContactEmail = new \Typecho\Widget\Helper\Form\Element\Text(
+        'friendContactEmail',
+        null,
+        null,
+        _t('友链联系邮箱'),
+        _t('显示在邻居页面的本站信息卡中；留空时不显示。')
+    );
+    $form->addInput($friendContactEmail->addRule('email', _t('请填写正确的联系邮箱')));
+
+    $friendLinks = new \Typecho\Widget\Helper\Form\Element\Textarea(
+        'friendLinks',
+        null,
+        null,
+        _t('友链列表'),
+        _t('每行一个站点，格式：站点名称|网站地址|头像地址|站点描述。头像和描述可以留空。')
+    );
+    $form->addInput($friendLinks);
 }
 
 function themeFields($layout)
@@ -241,6 +376,41 @@ function themeFields($layout)
 
     $layout->addItem($displayMode);
     $layout->addItem($postCover->addRule('url', _t('请填写正确的封面图 URL 地址')));
+}
+
+function getFriendLinks(string $raw): array
+{
+    $links = [];
+    $lines = preg_split('/\R/u', $raw) ?: [];
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || strpos($line, '#') === 0) {
+            continue;
+        }
+
+        $parts = array_pad(explode('|', $line, 4), 4, '');
+        $name = trim($parts[0]);
+        $url = trim($parts[1]);
+        $avatar = trim($parts[2]);
+        $description = trim($parts[3]);
+
+        if ($name === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+            continue;
+        }
+        if ($avatar !== '' && !filter_var($avatar, FILTER_VALIDATE_URL)) {
+            $avatar = '';
+        }
+
+        $links[] = [
+            'name' => $name,
+            'url' => $url,
+            'avatar' => $avatar,
+            'description' => $description,
+        ];
+    }
+
+    return $links;
 }
 
 /**
