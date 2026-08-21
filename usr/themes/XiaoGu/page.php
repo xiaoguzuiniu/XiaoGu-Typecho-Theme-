@@ -13,6 +13,8 @@ if ($browserTitle === '') {
 $pageTitle = (string) $this->title;
 $pageSlug = (string) $this->slug;
 $isPost = $this->is('post');
+$displayMode = $isPost ? (string) $this->fields->displayMode : '';
+$isArticlePost = $isPost && $displayMode !== 'moment';
 $isGuestbook = $this->is('page', 'guestbook');
 $isNeighbors = !$isPost && $pageSlug === 'neighbors';
 $bookPanelsOpen = $isPost && (int) $this->commentsNum > 0;
@@ -51,7 +53,7 @@ if ($profileSignature === '') {
     <div class="site-shell">
         <?php $this->need('topbar.php'); ?>
 
-        <div class="content-grid page-layout<?php if ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php endif; ?>">
+        <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php endif; ?>">
             <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>" data-damped-scroll>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>

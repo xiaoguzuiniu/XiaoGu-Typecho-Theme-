@@ -1455,6 +1455,18 @@ a:hover {
     line-height: 2;
 }
 
+.article-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.article-detail-layout .site-sidebar {
+    display: none;
+}
+
+.article-detail-layout .post-detail-body {
+    max-width: none;
+}
+
 .page-content {
     padding: 28px 2px 8px;
     color: #505779;
