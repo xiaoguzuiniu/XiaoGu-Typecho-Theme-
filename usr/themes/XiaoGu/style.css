@@ -1584,8 +1584,9 @@ a:hover {
 }
 
 .guestbook-comments-area > .comment-list {
-    columns: 190px 4;
-    column-gap: 18px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px 18px;
 }
 
 .guestbook-comments-area > .comment-list > li {
@@ -1593,8 +1594,8 @@ a:hover {
     display: grid;
     width: 100%;
     min-height: 168px;
-    margin: 0 0 20px;
-    padding: 38px 20px 17px;
+    margin: 0;
+    padding: 36px 18px 16px;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
         "content content"
@@ -2981,6 +2982,11 @@ button.activity-day:focus-visible {
 
     .page-column {
         padding: 28px 20px 36px;
+    }
+
+    .guestbook-comments-area > .comment-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px 14px;
     }
 
     .neighbors-hero h1 {
