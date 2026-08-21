@@ -501,6 +501,28 @@ if ($browserTitle === '') {
         });
 
         document.addEventListener('keydown', function (event) {
+            const textarea = event.target.closest('.moment-comment-form textarea[name="text"]');
+            if (
+                textarea
+                && event.key === 'Enter'
+                && !event.altKey
+                && !event.isComposing
+                && event.keyCode !== 229
+            ) {
+                event.preventDefault();
+                if (event.repeat) return;
+
+                const form = textarea.closest('.moment-comment-form');
+                const submit = form && form.querySelector('button[type="submit"]');
+                if (!form || !submit || submit.disabled) return;
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit(submit);
+                } else {
+                    submit.click();
+                }
+                return;
+            }
+
             const toggle = event.target.closest('[data-moment-comment-toggle]');
             if (toggle && (event.key === 'Enter' || event.key === ' ')) {
                 event.preventDefault();

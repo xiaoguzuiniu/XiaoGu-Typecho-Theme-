@@ -75,6 +75,18 @@ $commentsLabel = $isGuestbookComments ? '留言' : '评论';
                 var morePicker = form && form.querySelector('.emoji-picker-more');
                 var textarea = form && form.querySelector('textarea[name="text"]');
                 if (!toggle || !picker || !textarea) return;
+                textarea.addEventListener('keydown', function(e){
+                    if (e.key !== 'Enter' || e.altKey || e.isComposing || e.keyCode === 229) return;
+                    e.preventDefault();
+                    if (e.repeat) return;
+                    var submit = form.querySelector('button[type="submit"]');
+                    if (!submit || submit.disabled) return;
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit(submit);
+                    } else {
+                        submit.click();
+                    }
+                });
                 toggle.addEventListener('click', function(e){
                     e.preventDefault();
                     var target = morePicker || picker;
