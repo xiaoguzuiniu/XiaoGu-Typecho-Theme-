@@ -1541,6 +1541,192 @@ a:hover {
     font-size: 13px;
 }
 
+.guestbook-layout {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.guestbook-layout .site-sidebar {
+    display: none;
+}
+
+.guestbook-layout .page-column {
+    background: var(--sidebar);
+}
+
+.guestbook-layout .page-guestbook {
+    max-width: none;
+}
+
+.guestbook-comments-area {
+    margin-top: 38px;
+    padding-top: 30px;
+    border-top-color: var(--line);
+}
+
+.guestbook-comments-area > h2 {
+    margin-bottom: 24px;
+    color: #62688c;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.guestbook-comments-area > .comment-list {
+    columns: 190px 4;
+    column-gap: 18px;
+}
+
+.guestbook-comments-area > .comment-list > li {
+    position: relative;
+    display: grid;
+    width: 100%;
+    min-height: 168px;
+    margin: 0 0 20px;
+    padding: 38px 20px 17px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "content content"
+        "author meta"
+        "children children";
+    grid-template-rows: minmax(72px, auto) auto auto;
+    align-content: start;
+    break-inside: avoid;
+    border: 0;
+    border-radius: 2px;
+    background: #eeeeff;
+    box-shadow: 0 8px 18px rgba(64, 64, 140, 0.12);
+    transform: rotate(-0.65deg);
+    transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.guestbook-comments-area > .comment-list > li:nth-child(6n + 2) {
+    background: #e9edff;
+    transform: rotate(0.75deg);
+}
+
+.guestbook-comments-area > .comment-list > li:nth-child(6n + 3) {
+    background: #f1ebff;
+    transform: rotate(-0.45deg);
+}
+
+.guestbook-comments-area > .comment-list > li:nth-child(6n + 4) {
+    background: #e8f3ff;
+    transform: rotate(0.8deg);
+}
+
+.guestbook-comments-area > .comment-list > li:nth-child(6n + 5) {
+    background: #edf1ff;
+    transform: rotate(-0.7deg);
+}
+
+.guestbook-comments-area > .comment-list > li:nth-child(6n) {
+    background: #f4efff;
+    transform: rotate(0.5deg);
+}
+
+.guestbook-comments-area > .comment-list > li::before {
+    position: absolute;
+    top: 9px;
+    left: 50%;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #b8b8ff 0 18%, #6262ee 48%, #3737a8 100%);
+    content: "";
+    transform: translateX(-50%);
+    box-shadow: 0 2px 4px rgba(48, 48, 130, 0.38);
+}
+
+.guestbook-comments-area > .comment-list > li:hover {
+    z-index: 2;
+    box-shadow: 0 13px 26px rgba(64, 64, 140, 0.18);
+    transform: translateY(-4px) rotate(0deg);
+}
+
+.guestbook-comments-area > .comment-list > li > .comment-content {
+    grid-area: content;
+    min-width: 0;
+    margin: 0 0 13px;
+    padding: 0 0 13px;
+    border-bottom: 1px dashed rgba(76, 76, 255, 0.14);
+    color: #3d4264;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+}
+
+.guestbook-comments-area > .comment-list > li > .comment-content p {
+    margin: 0;
+}
+
+.guestbook-comments-area > .comment-list > li > .comment-author {
+    grid-area: author;
+    min-width: 0;
+    align-self: end;
+    color: #50558b;
+    font-size: 11px;
+}
+
+.guestbook-comments-area > .comment-list > li > .comment-author > span,
+.guestbook-comments-area > .comment-list > li > .comment-author .avatar {
+    display: none;
+}
+
+.guestbook-comments-area > .comment-list > li > .comment-author .fn {
+    display: block;
+    overflow: hidden;
+    font-style: normal;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.guestbook-comments-area > .comment-list > li > .comment-meta {
+    grid-area: meta;
+    align-self: end;
+    margin-left: 10px;
+    color: #898eab;
+    font-size: 9px;
+    white-space: nowrap;
+}
+
+.guestbook-comments-area > .comment-list > li > .comment-reply {
+    display: none;
+}
+
+.guestbook-comments-area > .comment-list > li > .comment-children,
+.guestbook-comments-area > .comment-list > li > .respond {
+    grid-area: children;
+    min-width: 0;
+}
+
+.guestbook-comments-area .comment-children {
+    margin-top: 13px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(76, 76, 255, 0.1);
+}
+
+.guestbook-comments-area .comment-children li {
+    min-height: 0;
+    margin: 8px 0 0;
+    padding: 10px 11px;
+    border: 0;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.38);
+    box-shadow: none;
+    transform: none;
+}
+
+.guestbook-comments-area .comment-children .comment-content {
+    margin-top: 6px;
+    color: #5c6182;
+    font-size: 11px;
+}
+
+.guestbook-comments-area > .respond {
+    margin-top: 34px;
+}
+
 .respond {
     margin-top: 30px;
 }

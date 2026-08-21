@@ -5,13 +5,16 @@ $isGuestbookComments = $this->is('page', 'guestbook');
 $commentsLabel = $isGuestbookComments ? '留言' : '评论';
 ?>
 
-<section id="comments" class="comments-area" aria-label="<?php echo $commentsLabel; ?>区">
+<section id="comments" class="comments-area<?php if ($isGuestbookComments): ?> guestbook-comments-area<?php endif; ?>" aria-label="<?php echo $commentsLabel; ?>区">
     <?php $this->comments()->to($comments); ?>
 
     <?php if ($comments->have()): ?>
         <?php if ($isGuestbookComments): ?>
             <h2><?php $this->commentsNum('还没有' . $commentsLabel, '已有 1 条' . $commentsLabel, '已有 %d 条' . $commentsLabel); ?></h2>
-            <?php $comments->listComments(); ?>
+            <?php $comments->listComments([
+                'avatarSize' => 0,
+                'dateFormat' => 'Y-m-d'
+            ]); ?>
             <?php $comments->pageNav('上一页', '下一页'); ?>
         <?php else: ?>
             <div class="post-comments-source" id="post-comments-source">
@@ -26,7 +29,9 @@ $commentsLabel = $isGuestbookComments ? '留言' : '评论';
 
     <?php if ($this->allow('comment')): ?>
         <div id="<?php $this->respondId(); ?>" class="respond">
-            <div class="cancel-comment-reply"><?php $comments->cancelReply(); ?></div>
+            <?php if (!$isGuestbookComments): ?>
+                <div class="cancel-comment-reply"><?php $comments->cancelReply(); ?></div>
+            <?php endif; ?>
             <?php if ($isGuestbookComments): ?>
                 <h2 id="response">写下你的<?php echo $commentsLabel; ?></h2>
             <?php endif; ?>

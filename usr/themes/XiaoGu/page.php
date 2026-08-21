@@ -50,7 +50,7 @@ if ($profileSignature === '') {
     <div class="site-shell">
         <?php $this->need('topbar.php'); ?>
 
-        <div class="content-grid page-layout">
+        <div class="content-grid page-layout<?php if ($isGuestbook): ?> guestbook-layout<?php endif; ?>">
             <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>" data-damped-scroll>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
