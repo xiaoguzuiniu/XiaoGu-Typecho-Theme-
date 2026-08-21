@@ -51,7 +51,7 @@ if ($profileSignature === '') {
         <?php $this->need('topbar.php'); ?>
 
         <div class="content-grid page-layout">
-            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>">
+            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>" data-damped-scroll>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
                         <section class="post-detail-hero" aria-label="文章头图">
@@ -122,6 +122,7 @@ if ($profileSignature === '') {
 
 </div>
 
+<script src="<?php $this->options->themeUrl('assets/damped-scroll.js?v=' . filemtime(__DIR__ . '/assets/damped-scroll.js')); ?>"></script>
 <script>
     (function () {
         const commentForm = document.getElementById('comment-form');

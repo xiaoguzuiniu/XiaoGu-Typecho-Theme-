@@ -39,7 +39,7 @@ $categoryIsOpen = $this->is('category');
 </svg>
 
 <header class="site-header">
-    <nav class="top-nav" aria-label="主导航">
+    <nav class="top-nav" aria-label="主导航" data-damped-scroll>
         <a class="top-nav-home<?php if ($this->is('index')): ?> is-current<?php endif; ?>"
            href="<?php $this->options->siteUrl(); ?>"><svg class="nav-icon" aria-hidden="true"><use href="#nav-icon-home"></use></svg><span>首页</span></a>
 

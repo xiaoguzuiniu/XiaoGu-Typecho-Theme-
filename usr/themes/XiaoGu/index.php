@@ -244,6 +244,7 @@ if ($browserTitle === '') {
 
 </div>
 
+<script src="<?php $this->options->themeUrl('assets/damped-scroll.js?v=' . filemtime(__DIR__ . '/assets/damped-scroll.js')); ?>"></script>
 <script>
     (function () {
         const mainColumn = document.querySelector('.main-column');
@@ -252,9 +253,14 @@ if ($browserTitle === '') {
         const hero = intro ? intro.querySelector('.hero') : null;
         const postList = mainColumn ? mainColumn.querySelector('.post-list') : null;
         const desktop = window.matchMedia('(min-width: 901px)');
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const scrollController = window.XiaoGuDampedScroll
+            ? window.XiaoGuDampedScroll.create(postList, { listenWheel: false })
+            : null;
         let expandedHeight = 0;
         let maxCollapse = 0;
-        let collapse = 0;
+        let collapseCurrent = 0;
+        let collapseTarget = 0;
         let frame = 0;
 
         if (!mainColumn || !intro || !introContent || !hero || !postList) return;
@@ -268,8 +274,19 @@ if ($browserTitle === '') {
                 return;
             }
 
-            intro.style.height = Math.max(0, expandedHeight - collapse) + 'px';
-            introContent.style.transform = 'translate3d(0, ' + (-collapse) + 'px, 0)';
+            const distance = collapseTarget - collapseCurrent;
+            if (reducedMotion.matches || Math.abs(distance) <= 0.35) {
+                collapseCurrent = collapseTarget;
+            } else {
+                collapseCurrent += distance * 0.18;
+            }
+
+            intro.style.height = Math.max(0, expandedHeight - collapseCurrent) + 'px';
+            introContent.style.transform = 'translate3d(0, ' + (-collapseCurrent) + 'px, 0)';
+
+            if (Math.abs(collapseTarget - collapseCurrent) > 0.35) {
+                frame = window.requestAnimationFrame(render);
+            }
         }
 
         function requestRender() {
@@ -278,14 +295,17 @@ if ($browserTitle === '') {
 
         function measure() {
             if (!desktop.matches) {
-                collapse = 0;
+                collapseCurrent = 0;
+                collapseTarget = 0;
+                if (scrollController) scrollController.cancel();
                 render();
                 return;
             }
 
             expandedHeight = introContent.offsetHeight;
             maxCollapse = Math.min(180, Math.max(0, hero.offsetHeight - 110));
-            collapse = Math.min(collapse, maxCollapse);
+            collapseCurrent = Math.min(collapseCurrent, maxCollapse);
+            collapseTarget = Math.min(collapseTarget, maxCollapse);
             render();
         }
 
@@ -293,23 +313,26 @@ if ($browserTitle === '') {
             if (!desktop.matches || event.ctrlKey) return;
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
 
-            let delta = event.deltaY;
-            if (event.deltaMode === 1) {
-                delta *= 16;
-            } else if (event.deltaMode === 2) {
-                delta *= postList.clientHeight;
-            }
+            const delta = window.XiaoGuDampedScroll
+                ? window.XiaoGuDampedScroll.normalizeDelta(event, postList)
+                : event.deltaY;
 
-            if (delta > 0 && collapse < maxCollapse) {
-                collapse = Math.min(maxCollapse, collapse + delta);
+            if (delta > 0 && collapseTarget < maxCollapse) {
+                collapseTarget = Math.min(maxCollapse, collapseTarget + delta);
                 requestRender();
                 event.preventDefault();
                 return;
             }
 
-            if (delta < 0 && postList.scrollTop <= 0 && collapse > 0) {
-                collapse = Math.max(0, collapse + delta);
+            const scrollTarget = scrollController ? scrollController.getTarget() : postList.scrollTop;
+            if (delta < 0 && postList.scrollTop <= 0.5 && scrollTarget <= 0.5 && collapseTarget > 0) {
+                collapseTarget = Math.max(0, collapseTarget + delta);
                 requestRender();
+                event.preventDefault();
+                return;
+            }
+
+            if (scrollController && scrollController.addDelta(delta)) {
                 event.preventDefault();
                 return;
             }
@@ -322,8 +345,8 @@ if ($browserTitle === '') {
         }, { passive: false });
 
         postList.addEventListener('scroll', function (event) {
-            if (!event.isTrusted && postList.scrollTop === 0 && collapse !== 0) {
-                collapse = 0;
+            if (!event.isTrusted && postList.scrollTop === 0 && collapseTarget !== 0) {
+                collapseTarget = 0;
                 requestRender();
             }
         }, { passive: true });
