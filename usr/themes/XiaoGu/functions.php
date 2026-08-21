@@ -199,6 +199,92 @@ function getPostLikes($widget)
 }
 
 /**
+ * 获取侧边栏创作活动日历。
+ *
+ * @param int $weeks
+ * @return array
+ */
+function getSiteActivityCalendar(int $weeks = 17): array
+{
+    $weeks = max(4, min(26, $weeks));
+    $today = new \DateTimeImmutable('today');
+    $calendarStart = $today->modify('monday this week')->modify('-' . ($weeks - 1) . ' weeks');
+    $calendarEnd = $calendarStart->modify('+' . ($weeks * 7 - 1) . ' days');
+    $rangeStart = $calendarStart->getTimestamp();
+    $rangeEnd = $today->setTime(23, 59, 59)->getTimestamp();
+
+    $db = \Typecho\Db::get();
+    $posts = $db->fetchAll(
+        $db->select('cid', 'title', 'created', 'modified')
+            ->from('table.contents')
+            ->where('type = ? AND status = ?', 'post', 'publish')
+            ->where('(created >= ? OR modified >= ?)', $rangeStart, $rangeStart)
+            ->order('modified', \Typecho\Db::SORT_ASC)
+    );
+
+    $activitiesByDate = [];
+    foreach ($posts as $post) {
+        $created = (int) $post['created'];
+        $modified = (int) $post['modified'];
+        $createdDate = date('Y-m-d', $created);
+        $modifiedDate = date('Y-m-d', $modified);
+        $title = trim((string) $post['title']);
+        $title = $title !== '' ? $title : '未命名文章';
+
+        if ($created >= $rangeStart && $created <= $rangeEnd) {
+            $activitiesByDate[$createdDate][] = [
+                'type' => 'new',
+                'title' => $title,
+            ];
+        }
+
+        if ($modified >= $rangeStart && $modified <= $rangeEnd && $modifiedDate !== $createdDate) {
+            $activitiesByDate[$modifiedDate][] = [
+                'type' => 'edit',
+                'title' => $title,
+            ];
+        }
+    }
+
+    $days = [];
+    for ($offset = 0; $offset < $weeks * 7; $offset++) {
+        $date = $calendarStart->modify('+' . $offset . ' days');
+        $dateKey = $date->format('Y-m-d');
+        $activities = $activitiesByDate[$dateKey] ?? [];
+        $count = count($activities);
+
+        $days[] = [
+            'date' => $dateKey,
+            'future' => $date > $today,
+            'count' => $count,
+            'level' => min(5, $count),
+            'activities' => $activities,
+        ];
+    }
+
+    $months = [];
+    for ($week = 0; $week < $weeks; $week++) {
+        $weekStart = $calendarStart->modify('+' . $week . ' weeks');
+        for ($day = 0; $day < 7; $day++) {
+            $date = $weekStart->modify('+' . $day . ' days');
+            if ($date->format('j') === '1') {
+                $months[] = [
+                    'column' => $week + 1,
+                    'label' => $date->format('m'),
+                ];
+                break;
+            }
+        }
+    }
+
+    return [
+        'weeks' => $weeks,
+        'days' => $days,
+        'months' => $months,
+    ];
+}
+
+/**
  * 判断当前访客是否已对指定文章点赞。
  *
  * @param int $cid
