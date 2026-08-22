@@ -518,7 +518,8 @@ a:hover {
     transition: width 0.2s ease, padding 0.2s ease;
 }
 
-.search-form:focus-within input {
+.search-form:focus-within input,
+.search-form.is-open input {
     width: 100px;
     padding: 6px 8px;
     border-bottom: 1px solid var(--line);
@@ -537,6 +538,12 @@ a:hover {
     color: #3d466c;
     font-size: 20px;
     cursor: pointer;
+}
+
+.admin-link svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
 }
 
 .search-form button:hover,
@@ -1294,6 +1301,12 @@ a:hover {
     font-size: 20px;
 }
 
+.page-heading-mark svg {
+    width: 23px;
+    height: 23px;
+    fill: currentColor;
+}
+
 .page-heading p {
     margin: 0 0 2px;
     color: #a1a5bd;
@@ -1570,9 +1583,9 @@ a:hover {
 }
 
 .guestbook-comments-area {
-    margin-top: 38px;
-    padding-top: 30px;
-    border-top-color: var(--line);
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
 }
 
 .guestbook-comments-area > h2 {
@@ -2737,7 +2750,8 @@ button.activity-day:focus-visible {
         justify-content: center;
     }
 
-    .site-header .search-form:focus-within input {
+    .site-header .search-form:focus-within input,
+    .site-header .search-form.is-open input {
         width: 66px;
     }
 
