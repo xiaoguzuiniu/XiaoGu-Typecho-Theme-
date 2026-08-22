@@ -36,9 +36,11 @@ body {
     -ms-overflow-style: none;
     background: var(--page);
     color: var(--text);
-    font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
     font-size: 14px;
     line-height: 1.65;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: auto;
 }
 
 a {
@@ -66,6 +68,10 @@ a:hover {
     width: min(1080px, calc(100% - 48px));
     margin: 40px auto;
     position: relative;
+    perspective: none;
+}
+
+.book-stage.is-book-open {
     perspective: 1800px;
 }
 
@@ -1621,33 +1627,28 @@ a:hover {
     border-radius: 2px;
     background: #eeeeff;
     box-shadow: 0 8px 18px rgba(64, 64, 140, 0.12);
-    transform: rotate(-0.65deg);
+    transform: none;
     transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
 .guestbook-comments-area > .comment-list > li:nth-child(6n + 2) {
     background: #e9edff;
-    transform: rotate(0.75deg);
 }
 
 .guestbook-comments-area > .comment-list > li:nth-child(6n + 3) {
     background: #f1ebff;
-    transform: rotate(-0.45deg);
 }
 
 .guestbook-comments-area > .comment-list > li:nth-child(6n + 4) {
     background: #e8f3ff;
-    transform: rotate(0.8deg);
 }
 
 .guestbook-comments-area > .comment-list > li:nth-child(6n + 5) {
     background: #edf1ff;
-    transform: rotate(-0.7deg);
 }
 
 .guestbook-comments-area > .comment-list > li:nth-child(6n) {
     background: #f4efff;
-    transform: rotate(0.5deg);
 }
 
 .guestbook-comments-area > .comment-list > li::before {
@@ -1676,7 +1677,7 @@ a:hover {
     padding: 0 0 13px;
     border-bottom: 1px dashed rgba(76, 76, 255, 0.14);
     color: #3d4264;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.8;
     overflow-wrap: anywhere;
 }
@@ -1690,7 +1691,7 @@ a:hover {
     min-width: 0;
     align-self: end;
     color: #50558b;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .guestbook-comments-area > .comment-list > li > .comment-author > span,
@@ -1712,7 +1713,7 @@ a:hover {
     align-self: end;
     margin-left: 10px;
     color: #898eab;
-    font-size: 9px;
+    font-size: 10px;
     white-space: nowrap;
 }
 
@@ -1769,30 +1770,29 @@ a:hover {
     color: var(--text);
 }
 
-.neighbors-hero {
+.neighbors-hero,
+.guestbook-hero {
     margin-bottom: 28px;
 }
 
-.neighbors-hero p {
-    margin: 0 0 6px;
-    color: var(--primary);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-}
-
-.neighbors-hero h1 {
+.neighbors-hero h1,
+.guestbook-hero h1 {
     margin: 0;
     color: #303657;
     font-size: 28px;
     line-height: 1.35;
 }
 
-.neighbors-hero span {
+.neighbors-hero span,
+.guestbook-hero span {
     display: block;
     margin-top: 10px;
     color: var(--muted);
     font-size: 12px;
+}
+
+.guestbook-hero {
+    margin-bottom: 0;
 }
 
 .friend-self-card,
@@ -3003,7 +3003,8 @@ button.activity-day:focus-visible {
         gap: 16px 14px;
     }
 
-    .neighbors-hero h1 {
+    .neighbors-hero h1,
+    .guestbook-hero h1 {
         font-size: 23px;
     }
 

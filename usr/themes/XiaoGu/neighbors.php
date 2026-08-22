@@ -34,9 +34,8 @@ if ($contactEmail !== '') {
 
 <div class="neighbors-page">
     <header class="neighbors-hero">
-        <p>FRIEND LINKS</p>
-        <h1>好朋友的链接</h1>
-        <span>让彼此的小站相遇，也让有趣的内容被更多人看见。</span>
+        <h1>好朋友的传送带</h1>
+        <span>沿着传送带，去拜访每一位有趣的朋友。</span>
     </header>
 
     <section class="friend-self-card" aria-labelledby="friend-self-title">
