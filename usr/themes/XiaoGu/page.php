@@ -169,10 +169,20 @@ if ($profileSignature === '') {
             if (textarea) textarea.focus();
         }
 
-        function beginReply(htmlId, coid) {
+        function replyAuthor(htmlId) {
+            const comment = document.getElementById(htmlId);
+            const author = comment ? comment.querySelector(':scope > .comment-author .fn') : null;
+            return author ? author.textContent.trim() : '';
+        }
+
+        function beginReply(htmlId, coid, authorName) {
             setReplyParent(coid);
             response.dataset.replyTo = htmlId;
-            if (cancelLink) cancelLink.style.display = '';
+            if (cancelLink) {
+                const targetName = authorName || replyAuthor(htmlId);
+                cancelLink.textContent = targetName ? '取消回复 ' + targetName : '取消回复';
+                cancelLink.style.display = '';
+            }
             focusResponse();
             return false;
         }
@@ -180,7 +190,10 @@ if ($profileSignature === '') {
         function cancelReply() {
             setReplyParent(null);
             delete response.dataset.replyTo;
-            if (cancelLink) cancelLink.style.display = 'none';
+            if (cancelLink) {
+                cancelLink.textContent = '取消回复';
+                cancelLink.style.display = 'none';
+            }
             focusResponse();
             return false;
         }
@@ -195,7 +208,8 @@ if ($profileSignature === '') {
             const comment = replyLink.closest('.comment-body');
             const replyUrl = new URL(replyLink.href, window.location.href);
             const coid = replyUrl.searchParams.get('replyTo');
-            if (comment && coid) beginReply(comment.id, coid);
+            const author = comment ? comment.querySelector(':scope > .comment-author .fn') : null;
+            if (comment && coid) beginReply(comment.id, coid, author ? author.textContent.trim() : '');
         }, true);
 
         if (cancelLink) {

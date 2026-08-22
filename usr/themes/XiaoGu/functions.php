@@ -205,13 +205,13 @@ function themeInit($archive)
 function applyXiaoGuVisitorCommentIdentity(array $comment, \Widget\Archive $content): array
 {
     $request = \Typecho\Request::getInstance();
-    if ((string) $request->get('xiaogu_visitor_comment') !== '1') {
-        return $comment;
-    }
-
     $author = trim((string) $request->get('author'));
     $mail = trim((string) $request->get('mail'));
     $url = trim((string) $request->get('url'));
+
+    if ($author === '' && $mail === '') {
+        return $comment;
+    }
 
     if ($author === '' || mb_strlen($author, 'UTF-8') > 150) {
         throw new \Typecho\Exception('请填写正确的昵称');

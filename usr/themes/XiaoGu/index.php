@@ -448,10 +448,12 @@ if ($browserTitle === '') {
                 }
                 parent.value = coid;
                 textarea.placeholder = author ? '回复 ' + author.textContent.trim() : '回复';
+                cancel.textContent = author ? '取消回复 ' + author.textContent.trim() : '取消回复';
                 cancel.hidden = false;
             } else {
                 if (parent) parent.remove();
                 textarea.placeholder = '评论';
+                cancel.textContent = '取消回复';
                 cancel.hidden = true;
             }
 
@@ -470,7 +472,10 @@ if ($browserTitle === '') {
                 textarea.placeholder = '评论';
                 textarea.blur();
             }
-            if (cancel) cancel.hidden = true;
+            if (cancel) {
+                cancel.textContent = '取消回复';
+                cancel.hidden = true;
+            }
             if (status) status.textContent = '';
             form.hidden = true;
         }
