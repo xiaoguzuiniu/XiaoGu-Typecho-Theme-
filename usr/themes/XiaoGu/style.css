@@ -1900,12 +1900,16 @@ a:hover {
 }
 
 .neighbors-hero,
-.guestbook-hero {
+.guestbook-hero,
+.about-hero,
+.gallery-hero {
     margin-bottom: 28px;
 }
 
 .neighbors-hero h1,
-.guestbook-hero h1 {
+.guestbook-hero h1,
+.about-hero h1,
+.gallery-hero h1 {
     margin: 0;
     color: #303657;
     font-size: 28px;
@@ -1913,7 +1917,9 @@ a:hover {
 }
 
 .neighbors-hero span,
-.guestbook-hero span {
+.guestbook-hero span,
+.about-hero span,
+.gallery-hero span {
     display: block;
     margin-top: 10px;
     color: var(--muted);
@@ -3914,6 +3920,8 @@ html.is-theme-switching .hero-bio {
 
 [data-theme="dark"] .neighbors-hero h1,
 [data-theme="dark"] .guestbook-hero h1,
+[data-theme="dark"] .about-hero h1,
+[data-theme="dark"] .gallery-hero h1,
 [data-theme="dark"] .friend-self-heading strong,
 [data-theme="dark"] .friend-section-heading h2,
 [data-theme="dark"] .friend-card-copy strong,

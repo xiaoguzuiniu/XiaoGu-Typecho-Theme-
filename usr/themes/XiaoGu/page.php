@@ -17,6 +17,8 @@ $displayMode = $isPost ? (string) $this->fields->displayMode : '';
 $isArticlePost = $isPost && $displayMode !== 'moment';
 $isGuestbook = $this->is('page', 'guestbook');
 $isNeighbors = !$isPost && $pageSlug === 'neighbors';
+$isAbout = !$isPost && $pageSlug === 'start-page';
+$isGallery = !$isPost && $pageSlug === 'gallery';
 $bookPanelsOpen = $isPost && (int) $this->commentsNum > 0;
 
 $profileName = trim((string) $this->options->profileName);
@@ -108,6 +110,15 @@ if ($profileSignature === '') {
                                 <h1><?php $this->title(); ?></h1>
                                 <span>写下想说的话，也留下你来过的足迹。</span>
                             </header>
+                        <?php elseif ($isAbout || $isGallery): ?>
+                            <header class="<?php echo $isGallery ? 'gallery-hero' : 'about-hero'; ?>">
+                                <h1><?php $this->title(); ?></h1>
+                                <span><?php echo $isGallery ? '收藏光影，也收藏生活里的片刻。' : '关于我，也关于这个小站。'; ?></span>
+                            </header>
+
+                            <div class="page-content">
+                                <?php $this->content(); ?>
+                            </div>
                         <?php else: ?>
                             <header class="page-heading">
                                 <span class="page-heading-mark" aria-hidden="true">◇</span>

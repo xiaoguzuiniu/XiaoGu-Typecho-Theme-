@@ -404,12 +404,14 @@ function themeFields($layout)
     $displayMode = new \Typecho\Widget\Helper\Form\Element\Select(
         'displayMode',
         [
-            'article' => _t('普通文章（点击进入详情）'),
-            'moment' => _t('朋友圈动态（列表直接展示）'),
+            'article' => _t('普通文章'),
+            'moment' => _t('朋友圈动态'),
         ],
         'article',
-        _t('内容展示类型'),
-        _t('朋友圈动态会在文章列表中直接显示完整正文和图片，不提供详情页入口。')
+        _t('文章展示方式'),
+        '<span style="display:block;padding-top:10px;line-height:1.6;">'
+            . _t('普通文章可进入详情页；朋友圈动态直接在首页展示正文和图片。')
+            . '</span>'
     );
 
     $postCover = new \Typecho\Widget\Helper\Form\Element\Text(
@@ -417,7 +419,9 @@ function themeFields($layout)
         null,
         null,
         _t('文章封面图'),
-        _t('填写完整图片 URL；留空时自动提取文章内第一张图片，都没有则显示默认占位图。')
+        '<span style="display:block;padding-top:10px;line-height:1.6;">'
+            . _t('填写完整图片 URL；留空时自动提取文章内第一张图片，都没有则显示默认占位图。')
+            . '</span>'
     );
 
     $layout->addItem($displayMode);
