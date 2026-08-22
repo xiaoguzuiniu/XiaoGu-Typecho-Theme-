@@ -9,6 +9,10 @@ while ($pages->next()) {
 }
 
 $categoryIsOpen = $this->is('category');
+$mobileNavName = trim((string) $this->options->profileName);
+if ($mobileNavName === '') {
+    $mobileNavName = (string) $this->options->title;
+}
 ?>
 
 <svg class="nav-icon-sprite" aria-hidden="true">
@@ -48,9 +52,19 @@ $categoryIsOpen = $this->is('category');
 
     <nav class="top-nav" id="site-navigation" aria-label="主导航" data-damped-scroll>
         <div class="mobile-nav-heading">
-            <strong>网站导航</strong>
-            <button class="mobile-nav-close" type="button" aria-label="关闭导航">×</button>
+            <div class="mobile-nav-brand">
+                <img src="<?php $this->options->themeUrl('assets/moment-avatar.png?v=' . filemtime(__DIR__ . '/assets/moment-avatar.png')); ?>"
+                     width="42" height="42" alt="">
+                <span>
+                    <strong><?php echo htmlspecialchars($mobileNavName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                    <small>记录生活，分享有趣</small>
+                </span>
+            </div>
+            <button class="mobile-nav-close" type="button" aria-label="关闭导航">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+            </button>
         </div>
+        <span class="mobile-nav-section-label">导航菜单</span>
         <a class="top-nav-home<?php if ($this->is('index')): ?> is-current<?php endif; ?>"
            href="<?php $this->options->siteUrl(); ?>"><svg class="nav-icon" aria-hidden="true"><use href="#nav-icon-home"></use></svg><span>首页</span></a>
 
@@ -89,6 +103,11 @@ $categoryIsOpen = $this->is('category');
             <a class="<?php if ($this->is('page', 'start-page')): ?>is-current<?php endif; ?>"
                href="<?php echo htmlspecialchars($navigationPages['start-page']['url'], ENT_QUOTES, 'UTF-8'); ?>"><svg class="nav-icon" aria-hidden="true"><use href="#nav-icon-about"></use></svg><span>关于</span></a>
         <?php endif; ?>
+
+        <div class="mobile-nav-footer">
+            <span>小古有趣</span>
+            <small>去发现生活里值得记录的瞬间</small>
+        </div>
     </nav>
     <button class="mobile-nav-backdrop" type="button" aria-label="关闭导航" tabindex="-1"></button>
 
