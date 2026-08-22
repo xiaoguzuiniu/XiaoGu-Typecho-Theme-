@@ -67,16 +67,15 @@ $activityCalendar = getSiteActivityCalendar();
     <section class="sidebar-block recent-block">
         <h2>最近文章</h2>
         <ol class="recent-list">
-            <?php \Widget\Contents\Post\Recent::alloc('pageSize=5')->to($recentPosts); ?>
-            <?php while ($recentPosts->next()): ?>
+            <?php $recentArticleNumber = 0; ?>
+            <?php \Widget\Contents\Post\Recent::alloc('pageSize=50')->to($recentPosts); ?>
+            <?php while ($recentArticleNumber < 5 && $recentPosts->next()): ?>
                 <?php $recentDisplayMode = (string) $recentPosts->fields->displayMode; ?>
+                <?php if ($recentDisplayMode === 'moment') continue; ?>
+                <?php $recentArticleNumber++; ?>
                 <li>
-                    <span><?php echo str_pad((string) $recentPosts->sequence, 2, '0', STR_PAD_LEFT); ?></span>
-                    <?php if ($recentDisplayMode === 'moment'): ?>
-                        <span class="recent-moment-title"><?php $recentPosts->title(); ?></span>
-                    <?php else: ?>
-                        <a href="<?php $recentPosts->permalink(); ?>"><?php $recentPosts->title(); ?></a>
-                    <?php endif; ?>
+                    <span><?php echo str_pad((string) $recentArticleNumber, 2, '0', STR_PAD_LEFT); ?></span>
+                    <a href="<?php $recentPosts->permalink(); ?>"><?php $recentPosts->title(); ?></a>
                 </li>
             <?php endwhile; ?>
         </ol>

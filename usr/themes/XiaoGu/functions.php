@@ -533,7 +533,7 @@ function getSiteActivityCalendar(int $weeks = 17): array
 
     $db = \Typecho\Db::get();
     $posts = $db->fetchAll(
-        $db->select('cid', 'title', 'created', 'modified')
+        $db->select('cid', 'title', 'text', 'created', 'modified')
             ->from('table.contents')
             ->where('type = ? AND status = ?', 'post', 'publish')
             ->where('(created >= ? OR modified >= ?)', $rangeStart, $rangeStart)
@@ -547,7 +547,24 @@ function getSiteActivityCalendar(int $weeks = 17): array
         $createdDate = date('Y-m-d', $created);
         $modifiedDate = date('Y-m-d', $modified);
         $title = trim((string) $post['title']);
-        $title = $title !== '' ? $title : '未命名文章';
+        $displayModeField = $db->fetchRow(
+            $db->select('str_value')
+                ->from('table.fields')
+                ->where('cid = ? AND name = ?', (int) $post['cid'], 'displayMode')
+        );
+        $displayMode = $displayModeField ? (string) $displayModeField['str_value'] : 'article';
+
+        if ($displayMode === 'moment') {
+            $content = (string) $post['text'];
+            if (strpos($content, '<!--markdown-->') === 0) {
+                $content = \Utils\Markdown::convert(substr($content, 15));
+            }
+            $content = html_entity_decode(strip_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $content = trim((string) preg_replace('/\s+/u', ' ', $content));
+            $title = $content !== '' ? \Typecho\Common::subStr($content, 0, 24, '…') : '朋友圈动态';
+        } else {
+            $title = $title !== '' ? $title : '未命名文章';
+        }
 
         if ($created >= $rangeStart && $created <= $rangeEnd) {
             $activitiesByDate[$createdDate][] = [
