@@ -134,6 +134,7 @@ if ($profileSignature === '') {
 
 </div>
 
+<script src="<?php $this->options->themeUrl('assets/comment-validation.js?v=' . filemtime(__DIR__ . '/assets/comment-validation.js')); ?>"></script>
 <script src="<?php $this->options->themeUrl('assets/damped-scroll.js?v=' . filemtime(__DIR__ . '/assets/damped-scroll.js')); ?>"></script>
 <script>
     (function () {

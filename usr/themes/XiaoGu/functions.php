@@ -8,6 +8,12 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  */
 function themeInit($archive)
 {
+    static $visitorCommentHookRegistered = false;
+    if (!$visitorCommentHookRegistered) {
+        \Typecho\Plugin::factory(\Widget\Feedback::class)->comment = 'applyXiaoGuVisitorCommentIdentity';
+        $visitorCommentHookRegistered = true;
+    }
+
     $action = isset($_GET['xiaogu_action']) ? $_GET['xiaogu_action'] : '';
     $cid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
 
@@ -194,6 +200,46 @@ function themeInit($archive)
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
+}
+
+function applyXiaoGuVisitorCommentIdentity(array $comment, \Widget\Archive $content): array
+{
+    $request = \Typecho\Request::getInstance();
+    if ((string) $request->get('xiaogu_visitor_comment') !== '1') {
+        return $comment;
+    }
+
+    $author = trim((string) $request->get('author'));
+    $mail = trim((string) $request->get('mail'));
+    $url = trim((string) $request->get('url'));
+
+    if ($author === '' || mb_strlen($author, 'UTF-8') > 150) {
+        throw new \Typecho\Exception('请填写正确的昵称');
+    }
+    if ($mail === '' || strlen($mail) > 150 || !filter_var($mail, FILTER_VALIDATE_EMAIL)) {
+        throw new \Typecho\Exception('请填写正确的邮箱');
+    }
+    if ($url !== '') {
+        if (strlen($url) > 255 || !filter_var($url, FILTER_VALIDATE_URL)) {
+            throw new \Typecho\Exception('请填写正确的网址');
+        }
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            throw new \Typecho\Exception('网址必须以 http:// 或 https:// 开头');
+        }
+    }
+
+    $comment['author'] = $author;
+    $comment['mail'] = $mail;
+    $comment['url'] = $url;
+    unset($comment['authorId']);
+
+    $expire = 30 * 24 * 3600;
+    \Typecho\Cookie::set('__typecho_remember_author', $author, $expire);
+    \Typecho\Cookie::set('__typecho_remember_mail', $mail, $expire);
+    \Typecho\Cookie::set('__typecho_remember_url', $url, $expire);
+
+    return $comment;
 }
 
 function validateFriendUrl(string $url, string $label, bool $required): string

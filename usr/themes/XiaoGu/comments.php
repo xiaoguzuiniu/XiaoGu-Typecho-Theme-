@@ -36,19 +36,15 @@ $commentsLabel = $isGuestbookComments ? '留言' : '评论';
                 <h2 id="response">写下你的<?php echo $commentsLabel; ?></h2>
             <?php endif; ?>
 
-            <form method="post" action="<?php $this->commentUrl(); ?>" id="comment-form" role="form"
+            <form method="post" action="<?php $this->commentUrl(); ?>" id="comment-form" role="form" novalidate
                   class="comment-card<?php if (!$isGuestbookComments): ?> post-comment-card<?php endif; ?>">
                 <div class="comment-fields">
-                    <?php if ($this->user->hasLogin()): ?>
-                        <input type="text" name="author" placeholder="昵称">
-                        <input type="email" name="mail" placeholder="邮箱">
-                        <input type="url" name="url" placeholder="网址">
-                    <?php else: ?>
-                        <input type="text" name="author" placeholder="昵称" value="<?php $this->remember('author'); ?>" required>
-                        <input type="email" name="mail" placeholder="邮箱" value="<?php $this->remember('mail'); ?>"<?php if ($this->options->commentsRequireMail): ?> required<?php endif; ?>>
-                        <input type="url" name="url" placeholder="网址" value="<?php $this->remember('url'); ?>">
-                    <?php endif; ?>
+                    <input type="text" name="author" placeholder="昵称 *" value="<?php $this->remember('author'); ?>" required>
+                    <input type="email" name="mail" placeholder="邮箱 *" value="<?php $this->remember('mail'); ?>" required>
+                    <input type="url" name="url" placeholder="网址（选填）" value="<?php $this->remember('url'); ?>">
                 </div>
+                <input type="hidden" name="xiaogu_visitor_comment" value="1">
+                <span class="comment-form-status" role="status" hidden></span>
 
                 <div class="comment-textarea">
                     <textarea rows="4" name="text" placeholder="写点什么..." required><?php $this->remember('text'); ?></textarea>

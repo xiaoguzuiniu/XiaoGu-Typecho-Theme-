@@ -10,7 +10,6 @@ $activityCalendar = getSiteActivityCalendar();
             <span><?php echo date('Y / m'); ?></span>
         </div>
         <span class="weekday">星期<?php echo $weekdays[(int) date('w')]; ?></span>
-        <p>认真记录每一段生活，也认真收藏每一次成长。</p>
     </section>
 
     <section class="sidebar-block">
