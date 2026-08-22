@@ -1581,7 +1581,7 @@ a:hover {
 }
 
 .guestbook-layout .page-column {
-    background: var(--sidebar);
+    background: var(--surface);
 }
 
 .guestbook-layout .page-guestbook {
