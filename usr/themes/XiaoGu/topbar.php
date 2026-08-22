@@ -81,6 +81,15 @@ $categoryIsOpen = $this->is('category');
     </nav>
 
     <div class="header-actions">
+        <button class="theme-toggle" type="button" aria-label="切换为深色模式" title="切换为深色模式">
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20.2 15.3A8.5 8.5 0 0 1 8.7 3.8 8.5 8.5 0 1 0 20.2 15.3Z"/>
+            </svg>
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+            </svg>
+        </button>
         <form class="search-form" method="get" action="<?php $this->options->siteUrl(); ?>" role="search">
             <label class="sr-only" for="site-search">搜索文章</label>
             <input id="site-search" type="search" name="s" placeholder="搜索">
@@ -127,6 +136,65 @@ $categoryIsOpen = $this->is('category');
         toggle.addEventListener('click', function () {
             setOpen(!group.classList.contains('is-open'), true);
         });
+    }());
+</script>
+<script>
+    (function () {
+        const root = document.documentElement;
+        const toggle = document.querySelector('.theme-toggle');
+        const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+        const storageKey = 'xiaogu-color-theme';
+        if (!toggle) return;
+
+        function updateToggle() {
+            const dark = root.dataset.theme === 'dark';
+            const label = dark ? '切换为浅色模式' : '切换为深色模式';
+            toggle.setAttribute('aria-label', label);
+            toggle.setAttribute('title', label);
+            toggle.setAttribute('aria-pressed', String(dark));
+        }
+
+        function applyTheme(preference, persist) {
+            const dark = preference === 'dark'
+                || (preference === 'auto' && colorScheme.matches);
+            const theme = dark ? 'dark' : 'light';
+
+            root.dataset.theme = theme;
+            root.dataset.themePreference = preference;
+            root.style.colorScheme = theme;
+
+            if (persist) {
+                try {
+                    window.localStorage.setItem(storageKey, preference);
+                } catch (error) {
+                    // 本地存储不可用时仍允许当前页面切换主题。
+                }
+            }
+
+            updateToggle();
+        }
+
+        toggle.addEventListener('click', function () {
+            root.classList.add('is-theme-switching');
+            applyTheme(root.dataset.theme === 'dark' ? 'light' : 'dark', true);
+            window.setTimeout(function () {
+                root.classList.remove('is-theme-switching');
+            }, 220);
+        });
+
+        const handleSystemTheme = function () {
+            if ((root.dataset.themePreference || 'auto') === 'auto') {
+                applyTheme('auto', false);
+            }
+        };
+
+        if (typeof colorScheme.addEventListener === 'function') {
+            colorScheme.addEventListener('change', handleSystemTheme);
+        } else {
+            colorScheme.addListener(handleSystemTheme);
+        }
+
+        updateToggle();
     }());
 </script>
 <script>

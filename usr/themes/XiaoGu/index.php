@@ -25,6 +25,7 @@ if ($browserTitle === '') {
 <head>
     <meta charset="<?php $this->options->charset(); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php $this->need('theme-head.php'); ?>
     <title><?php echo htmlspecialchars($browserTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <link rel="icon" type="image/svg+xml"
           href="<?php $this->options->themeUrl('assets/favicon.svg?v=' . filemtime(__DIR__ . '/assets/favicon.svg')); ?>">
