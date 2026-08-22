@@ -64,7 +64,6 @@ if ($mobileNavName === '') {
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
             </button>
         </div>
-        <span class="mobile-nav-section-label">导航菜单</span>
         <a class="top-nav-home<?php if ($this->is('index')): ?> is-current<?php endif; ?>"
            href="<?php $this->options->siteUrl(); ?>"><svg class="nav-icon" aria-hidden="true"><use href="#nav-icon-home"></use></svg><span>首页</span></a>
 
@@ -115,7 +114,12 @@ if ($mobileNavName === '') {
         <form class="search-form" method="get" action="<?php $this->options->siteUrl(); ?>" role="search">
             <label class="sr-only" for="site-search">搜索文章</label>
             <input id="site-search" type="search" name="s" placeholder="搜索">
-            <button type="button" aria-label="展开搜索" aria-controls="site-search" aria-expanded="false">⌕</button>
+            <button type="button" aria-label="展开搜索" aria-controls="site-search" aria-expanded="false">
+                <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="6"></circle>
+                    <path d="m16 16 4 4"></path>
+                </svg>
+            </button>
         </form>
         <button class="theme-toggle" type="button" aria-label="切换为深色模式" title="切换为深色模式">
             <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
