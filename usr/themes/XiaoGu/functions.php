@@ -21,7 +21,7 @@ function themeInit($archive)
     $action = isset($_GET['xiaogu_action']) ? $_GET['xiaogu_action'] : '';
     $cid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
 
-    if ($cid <= 0 || !in_array($action, ['view', 'like', 'moment_comment', 'friend_apply'], true)) {
+    if ($cid <= 0 || !in_array($action, ['view', 'like', 'moment_comment', 'friend_apply', 'friend_review'], true)) {
         return;
     }
 
@@ -29,6 +29,133 @@ function themeInit($archive)
 
     try {
         $db = \Typecho\Db::get();
+
+        if ($action === 'friend_review') {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new \Exception('审批请求方式错误');
+            }
+            if (!\Widget\User::alloc()->pass('administrator', true)) {
+                throw new \Exception('没有友链审批权限');
+            }
+
+            $submittedToken = isset($_GET['_']) && is_scalar($_GET['_']) ? (string) $_GET['_'] : '';
+            $expectedToken = \Widget\Security::alloc()->getToken(
+                \Typecho\Request::getInstance()->getReferer()
+            );
+            if ($submittedToken === '' || !hash_equals($expectedToken, $submittedToken)) {
+                throw new \Exception('审批安全验证失败，请刷新后台页面后重试');
+            }
+
+            $reviewAction = isset($_POST['review_action']) && is_scalar($_POST['review_action'])
+                ? (string) $_POST['review_action']
+                : '';
+            $coid = isset($_POST['coid']) ? (int) $_POST['coid'] : 0;
+            if (!in_array($reviewAction, ['approve', 'reject'], true) || $coid <= 0) {
+                throw new \Exception('友链审批参数错误');
+            }
+
+            $comment = $db->fetchRow(
+                $db->select('coid', 'cid', 'author', 'mail', 'url', 'text', 'status')
+                    ->from('table.comments')
+                    ->where('coid = ? AND cid = ? AND type = ?', $coid, $cid, 'comment')
+                    ->limit(1)
+            );
+            $application = $comment ? parseXiaoGuFriendApplication($comment) : false;
+            if (!$comment || $application === false || !in_array($comment['status'], ['waiting', 'approved'], true)) {
+                throw new \Exception('找不到可审批的友链申请');
+            }
+
+            if ($reviewAction === 'reject') {
+                $statusChanged = $db->query(
+                    $db->update('table.comments')
+                        ->rows(['status' => 'spam'])
+                        ->where('coid = ? AND status = ?', $coid, $comment['status'])
+                );
+                if ($statusChanged && $comment['status'] === 'approved') {
+                    $db->query(
+                        $db->update('table.contents')
+                            ->expression('commentsNum', 'commentsNum - 1')
+                            ->where('cid = ? AND commentsNum > 0', $cid)
+                    );
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => '已拒绝该友链申请',
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $friendLine = formatXiaoGuFriendLink($application);
+            $options = \Widget\Options::alloc();
+            $themeOptionName = 'theme:' . (string) $options->theme;
+            $themeOption = $db->fetchRow(
+                $db->select('value')->from('table.options')
+                    ->where('name = ? AND user = ?', $themeOptionName, 0)
+                    ->limit(1)
+            );
+            $themeSettings = $themeOption ? json_decode((string) $themeOption['value'], true) : [];
+            if (!is_array($themeSettings)) {
+                if ($themeOption && trim((string) $themeOption['value']) !== '') {
+                    throw new \Exception('现有主题设置格式异常，已停止写入以避免覆盖');
+                }
+                $themeSettings = [];
+            }
+
+            $friendLinks = isset($themeSettings['friendLinks'])
+                ? trim((string) $themeSettings['friendLinks'])
+                : '';
+            if (!isXiaoGuFriendUrlConfigured($friendLinks, $application['site_url'])) {
+                $themeSettings['friendLinks'] = $friendLinks === ''
+                    ? $friendLine
+                    : $friendLinks . "\n" . $friendLine;
+                $encodedSettings = json_encode(
+                    $themeSettings,
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                );
+                if ($encodedSettings === false) {
+                    throw new \Exception('友链设置保存失败');
+                }
+
+                if ($themeOption) {
+                    $db->query(
+                        $db->update('table.options')
+                            ->rows(['value' => $encodedSettings])
+                            ->where('name = ? AND user = ?', $themeOptionName, 0)
+                    );
+                } else {
+                    $db->query(
+                        $db->insert('table.options')->rows([
+                            'name' => $themeOptionName,
+                            'user' => 0,
+                            'value' => $encodedSettings
+                        ])
+                    );
+                }
+            }
+
+            if ($comment['status'] !== 'approved') {
+                $statusChanged = $db->query(
+                    $db->update('table.comments')
+                        ->rows(['status' => 'approved'])
+                        ->where('coid = ? AND status = ?', $coid, $comment['status'])
+                );
+                if ($statusChanged) {
+                    $db->query(
+                        $db->update('table.contents')
+                            ->expression('commentsNum', 'commentsNum + 1')
+                            ->where('cid = ?', $cid)
+                    );
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => '已通过并加入友链列表',
+                'friendLine' => $friendLine,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
 
         if ($action === 'friend_apply') {
             if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -220,7 +347,11 @@ function applyXiaoGuVisitorCommentIdentity(array $comment, \Widget\Archive $cont
     if ($author === '' || mb_strlen($author, 'UTF-8') > 150) {
         throw new \Typecho\Exception('请填写正确的昵称');
     }
-    if ($mail === '' || strlen($mail) > 150 || !filter_var($mail, FILTER_VALIDATE_EMAIL)) {
+    $mailRequired = (bool) \Widget\Options::alloc()->commentsRequireMail;
+    if (
+        ($mailRequired && $mail === '')
+        || ($mail !== '' && (strlen($mail) > 150 || !filter_var($mail, FILTER_VALIDATE_EMAIL)))
+    ) {
         throw new \Typecho\Exception('请填写正确的邮箱');
     }
     if ($url !== '') {
@@ -262,6 +393,84 @@ function validateFriendUrl(string $url, string $label, bool $required): string
     }
 
     return $validated;
+}
+
+function parseXiaoGuFriendApplication(array $comment)
+{
+    $text = str_replace(["\r\n", "\r"], "\n", trim((string) ($comment['text'] ?? '')));
+    $lines = preg_split('/\n+/u', $text) ?: [];
+    if (empty($lines) || trim((string) $lines[0]) !== '友链申请') {
+        return false;
+    }
+
+    $labels = [
+        '网站名称' => 'site_name',
+        '网站地址' => 'site_url',
+        '网站描述' => 'description',
+        '头像地址' => 'avatar_url',
+        'RSS 地址' => 'rss_url',
+        '备注' => 'note'
+    ];
+    $application = [
+        'site_name' => trim((string) ($comment['author'] ?? '')),
+        'site_url' => trim((string) ($comment['url'] ?? '')),
+        'description' => '',
+        'avatar_url' => '',
+        'rss_url' => '',
+        'mail' => trim((string) ($comment['mail'] ?? '')),
+        'note' => ''
+    ];
+
+    foreach (array_slice($lines, 1) as $line) {
+        foreach ($labels as $label => $key) {
+            $prefix = $label . '：';
+            if (strpos($line, $prefix) === 0) {
+                $application[$key] = trim(substr($line, strlen($prefix)));
+                break;
+            }
+        }
+    }
+
+    if (
+        $application['site_name'] === ''
+        || $application['description'] === ''
+        || !filter_var($application['site_url'], FILTER_VALIDATE_URL)
+    ) {
+        return false;
+    }
+
+    return $application;
+}
+
+function formatXiaoGuFriendLink(array $application): string
+{
+    $clean = static function ($value): string {
+        return trim(str_replace(
+            ["|", "\r", "\n"],
+            ["｜", ' ', ' '],
+            (string) $value
+        ));
+    };
+
+    return implode('|', [
+        $clean($application['site_name'] ?? ''),
+        $clean($application['site_url'] ?? ''),
+        $clean($application['avatar_url'] ?? ''),
+        $clean($application['description'] ?? '')
+    ]);
+}
+
+function isXiaoGuFriendUrlConfigured(string $friendLinks, string $siteUrl): bool
+{
+    $target = rtrim(strtolower(trim($siteUrl)), '/');
+    foreach (preg_split('/\r\n|\r|\n/', $friendLinks) ?: [] as $line) {
+        $parts = array_map('trim', explode('|', $line));
+        if (isset($parts[1]) && rtrim(strtolower($parts[1]), '/') === $target) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function submitXiaoGuFeedback(\Widget\Archive $content, array $input, bool $requireOpen = true): \Widget\Feedback
@@ -410,6 +619,49 @@ function renderXiaoGuThemeImagePicker()
         return;
     }
 
+    $db = \Typecho\Db::get();
+    $options = \Widget\Options::alloc();
+    $security = \Widget\Security::alloc();
+    $neighborsPage = $db->fetchRow(
+        $db->select('cid')->from('table.contents')
+            ->where('slug = ? AND type = ?', 'neighbors', 'page')
+            ->limit(1)
+    );
+    $applications = [];
+    $reviewUrl = '';
+
+    if ($neighborsPage) {
+        $reviewUrl = $security->getIndex(
+            '/?xiaogu_action=friend_review&cid=' . (int) $neighborsPage['cid']
+        );
+        $comments = $db->fetchAll(
+            $db->select('coid', 'author', 'mail', 'url', 'text', 'status', 'created')
+                ->from('table.comments')
+                ->where('cid = ? AND type = ?', (int) $neighborsPage['cid'], 'comment')
+                ->order('created', \Typecho\Db::SORT_DESC)
+                ->limit(100)
+        );
+        $configuredFriends = trim((string) $options->friendLinks);
+
+        foreach ($comments as $comment) {
+            if (!in_array($comment['status'], ['waiting', 'approved'], true)) {
+                continue;
+            }
+
+            $application = parseXiaoGuFriendApplication($comment);
+            if (
+                $application === false
+                || isXiaoGuFriendUrlConfigured($configuredFriends, $application['site_url'])
+            ) {
+                continue;
+            }
+
+            $application['coid'] = (int) $comment['coid'];
+            $application['created'] = (int) $comment['created'];
+            $applications[] = $application;
+        }
+    }
+
     $attachments = \Widget\Contents\Attachment\Admin::allocWithAlias(
         'xiaogu-theme-image-picker',
         ['pageSize' => 500]
@@ -428,9 +680,151 @@ function renderXiaoGuThemeImagePicker()
         ];
     }
 
-    $uploadUrl = \Widget\Security::alloc()->getIndex('/action/upload');
+    $uploadUrl = $security->getIndex('/action/upload');
     ?>
+    <section class="xiaogu-friend-review" id="xiaogu-friend-review" style="display:none">
+        <div class="xiaogu-friend-review-heading">
+            <div>
+                <h3>友链申请审批</h3>
+                <p>通过后会自动整理格式并加入下方“友链列表”。</p>
+            </div>
+            <strong data-friend-review-count><?php echo count($applications); ?> 个待处理</strong>
+        </div>
+        <div class="xiaogu-friend-review-list">
+            <?php foreach ($applications as $application): ?>
+                <article class="xiaogu-friend-application" data-friend-application="<?php echo (int) $application['coid']; ?>">
+                    <div class="xiaogu-friend-application-main">
+                        <?php if ($application['avatar_url'] !== ''): ?>
+                            <img src="<?php echo htmlspecialchars($application['avatar_url'], ENT_QUOTES, 'UTF-8'); ?>"
+                                 alt="" loading="lazy">
+                        <?php endif; ?>
+                        <div>
+                            <strong><?php echo htmlspecialchars($application['site_name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <a href="<?php echo htmlspecialchars($application['site_url'], ENT_QUOTES, 'UTF-8'); ?>"
+                               target="_blank" rel="noopener noreferrer">
+                                <?php echo htmlspecialchars($application['site_url'], ENT_QUOTES, 'UTF-8'); ?>
+                            </a>
+                            <p><?php echo htmlspecialchars($application['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php if ($application['mail'] !== ''): ?>
+                                <small><?php echo htmlspecialchars($application['mail'], ENT_QUOTES, 'UTF-8'); ?></small>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="xiaogu-friend-application-actions">
+                        <button type="button" class="btn btn-s primary"
+                                data-friend-review-action="approve">通过并加入友链</button>
+                        <button type="button" class="btn btn-s"
+                                data-friend-review-action="reject">拒绝</button>
+                        <span data-friend-review-status></span>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+            <p class="xiaogu-friend-review-empty"<?php if (!empty($applications)): ?> hidden<?php endif; ?>>
+                暂无待处理的友链申请。
+            </p>
+        </div>
+    </section>
     <style>
+        .xiaogu-friend-review {
+            margin: 0 0 24px;
+            padding: 18px;
+            border: 1px solid #e4e7f1;
+            border-radius: 8px;
+            background: #fafbff;
+        }
+
+        .xiaogu-friend-review-heading {
+            display: flex;
+            margin-bottom: 14px;
+            justify-content: space-between;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .xiaogu-friend-review-heading h3,
+        .xiaogu-friend-review-heading p {
+            margin: 0;
+        }
+
+        .xiaogu-friend-review-heading p,
+        .xiaogu-friend-review-heading strong {
+            color: #8a91a8;
+            font-size: 12px;
+        }
+
+        .xiaogu-friend-review-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .xiaogu-friend-application {
+            display: flex;
+            padding: 12px;
+            border: 1px solid #e7e9f2;
+            border-radius: 7px;
+            background: #fff;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .xiaogu-friend-application-main {
+            display: flex;
+            min-width: 0;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .xiaogu-friend-application-main img {
+            width: 42px;
+            height: 42px;
+            border: 1px solid #e6e6e6;
+            border-radius: 9px;
+            object-fit: cover;
+            flex: 0 0 auto;
+        }
+
+        .xiaogu-friend-application-main strong,
+        .xiaogu-friend-application-main a,
+        .xiaogu-friend-application-main p,
+        .xiaogu-friend-application-main small {
+            display: block;
+            margin: 0;
+        }
+
+        .xiaogu-friend-application-main a {
+            overflow: hidden;
+            color: #467bba;
+            font-size: 12px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .xiaogu-friend-application-main p,
+        .xiaogu-friend-application-main small {
+            color: #777;
+            font-size: 12px;
+        }
+
+        .xiaogu-friend-application-actions {
+            display: flex;
+            flex: 0 0 auto;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .xiaogu-friend-application-actions span {
+            color: #777;
+            font-size: 12px;
+        }
+
+        .xiaogu-friend-review-empty {
+            margin: 0;
+            padding: 18px;
+            color: #999;
+            text-align: center;
+        }
+
         .xiaogu-image-picker {
             display: grid;
             margin-top: 10px;
@@ -481,6 +875,15 @@ function renderXiaoGuThemeImagePicker()
         }
 
         @media (max-width: 480px) {
+            .xiaogu-friend-application {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .xiaogu-friend-application-actions {
+                flex-wrap: wrap;
+            }
+
             .xiaogu-image-picker {
                 grid-template-columns: 1fr 1fr;
             }
@@ -494,6 +897,10 @@ function renderXiaoGuThemeImagePicker()
         (function () {
             var uploadUrl = <?php echo json_encode(
                 $uploadUrl,
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+            ); ?>;
+            var reviewUrl = <?php echo json_encode(
+                $reviewUrl,
                 JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
             ); ?>;
             var images = <?php echo json_encode(
@@ -682,6 +1089,73 @@ function renderXiaoGuThemeImagePicker()
                     setStatus(picker, '图片地址无法加载', true);
                 });
             });
+
+            var reviewPanel = document.getElementById('xiaogu-friend-review');
+            var settingsForm = document.querySelector('form[action*="themes-edit"]');
+            if (reviewPanel && settingsForm) {
+                settingsForm.parentNode.insertBefore(reviewPanel, settingsForm);
+                reviewPanel.style.display = '';
+
+                reviewPanel.addEventListener('click', function (event) {
+                    var button = event.target.closest('[data-friend-review-action]');
+                    if (!button || !reviewUrl) return;
+
+                    var card = button.closest('[data-friend-application]');
+                    var action = button.getAttribute('data-friend-review-action');
+                    var coid = card ? card.getAttribute('data-friend-application') : '';
+                    var status = card ? card.querySelector('[data-friend-review-status]') : null;
+                    if (!card || !coid || !status) return;
+                    if (action === 'reject' && !window.confirm('确认拒绝这条友链申请吗？')) return;
+
+                    var buttons = card.querySelectorAll('button');
+                    buttons.forEach(function (item) {
+                        item.disabled = true;
+                    });
+                    status.textContent = action === 'approve' ? '正在通过…' : '正在拒绝…';
+
+                    var data = new FormData();
+                    data.append('coid', coid);
+                    data.append('review_action', action);
+
+                    fetch(reviewUrl, {
+                        method: 'POST',
+                        body: data,
+                        credentials: 'same-origin'
+                    }).then(function (response) {
+                        return response.json().then(function (result) {
+                            if (!response.ok || !result.success) {
+                                throw new Error(result.message || ('HTTP ' + response.status));
+                            }
+                            return result;
+                        });
+                    }).then(function (result) {
+                        if (action === 'approve' && result.friendLine) {
+                            var friendLinks = document.querySelector('textarea[name="friendLinks"]');
+                            if (friendLinks) {
+                                var current = friendLinks.value.trim();
+                                var lines = current ? current.split(/\r?\n/) : [];
+                                if (lines.indexOf(result.friendLine) === -1) {
+                                    friendLinks.value = current
+                                        ? current + '\n' + result.friendLine
+                                        : result.friendLine;
+                                    friendLinks.dispatchEvent(new Event('change', {bubbles: true}));
+                                }
+                            }
+                        }
+
+                        card.remove();
+                        var remaining = reviewPanel.querySelectorAll('[data-friend-application]').length;
+                        reviewPanel.querySelector('[data-friend-review-count]').textContent =
+                            remaining + ' 个待处理';
+                        reviewPanel.querySelector('.xiaogu-friend-review-empty').hidden = remaining !== 0;
+                    }).catch(function (error) {
+                        status.textContent = error.message;
+                        buttons.forEach(function (item) {
+                            item.disabled = false;
+                        });
+                    });
+                });
+            }
         }());
     </script>
     <?php
