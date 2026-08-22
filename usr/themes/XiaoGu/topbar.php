@@ -39,7 +39,18 @@ $categoryIsOpen = $this->is('category');
 </svg>
 
 <header class="site-header">
-    <nav class="top-nav" aria-label="主导航" data-damped-scroll>
+    <button class="mobile-nav-toggle" type="button" aria-label="打开导航"
+            aria-controls="site-navigation" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16"></path>
+        </svg>
+    </button>
+
+    <nav class="top-nav" id="site-navigation" aria-label="主导航" data-damped-scroll>
+        <div class="mobile-nav-heading">
+            <strong>网站导航</strong>
+            <button class="mobile-nav-close" type="button" aria-label="关闭导航">×</button>
+        </div>
         <a class="top-nav-home<?php if ($this->is('index')): ?> is-current<?php endif; ?>"
            href="<?php $this->options->siteUrl(); ?>"><svg class="nav-icon" aria-hidden="true"><use href="#nav-icon-home"></use></svg><span>首页</span></a>
 
@@ -79,6 +90,7 @@ $categoryIsOpen = $this->is('category');
                href="<?php echo htmlspecialchars($navigationPages['start-page']['url'], ENT_QUOTES, 'UTF-8'); ?>"><svg class="nav-icon" aria-hidden="true"><use href="#nav-icon-about"></use></svg><span>关于</span></a>
         <?php endif; ?>
     </nav>
+    <button class="mobile-nav-backdrop" type="button" aria-label="关闭导航" tabindex="-1"></button>
 
     <div class="header-actions">
         <form class="search-form" method="get" action="<?php $this->options->siteUrl(); ?>" role="search">
@@ -195,6 +207,56 @@ $categoryIsOpen = $this->is('category');
         }
 
         updateToggle();
+    }());
+</script>
+<script>
+    (function () {
+        const root = document.documentElement;
+        const toggle = document.querySelector('.mobile-nav-toggle');
+        const close = document.querySelector('.mobile-nav-close');
+        const backdrop = document.querySelector('.mobile-nav-backdrop');
+        const navigation = document.getElementById('site-navigation');
+        const mobile = window.matchMedia('(max-width: 640px)');
+        if (!toggle || !close || !backdrop || !navigation) return;
+
+        function setOpen(open) {
+            root.classList.toggle('is-mobile-nav-open', open);
+            toggle.setAttribute('aria-expanded', String(open));
+            toggle.setAttribute('aria-label', open ? '关闭导航' : '打开导航');
+            backdrop.setAttribute('tabindex', open ? '0' : '-1');
+            if (open) {
+                close.focus();
+            } else if (document.activeElement === close || document.activeElement === backdrop) {
+                toggle.focus();
+            }
+        }
+
+        toggle.addEventListener('click', function () {
+            setOpen(!root.classList.contains('is-mobile-nav-open'));
+        });
+        close.addEventListener('click', function () {
+            setOpen(false);
+        });
+        backdrop.addEventListener('click', function () {
+            setOpen(false);
+        });
+        navigation.addEventListener('click', function (event) {
+            if (event.target.closest('a')) setOpen(false);
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && root.classList.contains('is-mobile-nav-open')) {
+                setOpen(false);
+            }
+        });
+
+        const closeOnDesktop = function () {
+            if (!mobile.matches) setOpen(false);
+        };
+        if (typeof mobile.addEventListener === 'function') {
+            mobile.addEventListener('change', closeOnDesktop);
+        } else {
+            mobile.addListener(closeOnDesktop);
+        }
     }());
 </script>
 <script>
