@@ -353,6 +353,7 @@ if ($profileSignature === '') {
     }());
 </script>
 
+<script src="<?php $this->options->themeUrl('assets/image-lightbox.js?v=' . filemtime(__DIR__ . '/assets/image-lightbox.js')); ?>"></script>
 <?php $this->footer(); ?>
 </body>
 </html>

@@ -1,4 +1,13 @@
 <?php
+/**
+ * 一款简洁的个人博客主题，支持朋友圈、深色模式与移动端适配
+ *
+ * @package XiaoGu
+ * @author xiaogu
+ * @version 1.0.0
+ * @link https://github.com/xiaoguzuiniu/XiaoGu-Typecho-Theme-
+ */
+
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 $profileName = trim((string) $this->options->profileName);
@@ -915,6 +924,7 @@ if ($browserTitle === '') {
     }());
 </script>
 
+<script src="<?php $this->options->themeUrl('assets/image-lightbox.js?v=' . filemtime(__DIR__ . '/assets/image-lightbox.js')); ?>"></script>
 <?php $this->footer(); ?>
 </body>
 </html>
