@@ -884,12 +884,13 @@ a:hover {
 }
 
 .moment-avatar {
+    display: block;
     width: 42px;
     height: 42px;
     flex: 0 0 42px;
     border-radius: 10px;
     background: #fff;
-    image-rendering: -webkit-optimize-contrast;
+    image-rendering: auto;
     object-fit: cover;
     object-position: center;
 }

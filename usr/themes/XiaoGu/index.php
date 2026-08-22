@@ -114,8 +114,9 @@ if ($browserTitle === '') {
                             <article class="moment-card">
                                 <header class="moment-header">
                                     <?php if ($profileAvatarUrl !== ''): ?>
-                                        <img class="moment-avatar" src="<?php echo htmlspecialchars($profileAvatarUrl, ENT_QUOTES, 'UTF-8'); ?>"
-                                             alt="" loading="lazy" decoding="async">
+                                        <img class="moment-avatar"
+                                             src="<?php $this->options->themeUrl('assets/moment-avatar.png?v=' . filemtime(__DIR__ . '/assets/moment-avatar.png')); ?>"
+                                             width="42" height="42" alt="" decoding="sync">
                                     <?php else: ?>
                                         <span class="moment-avatar moment-avatar-fallback" aria-hidden="true">X</span>
                                     <?php endif; ?>
@@ -281,7 +282,8 @@ if ($browserTitle === '') {
                 collapseCurrent += distance * 0.18;
             }
 
-            intro.style.height = Math.max(0, expandedHeight - collapseCurrent) + 'px';
+            const renderedCollapse = Math.round(collapseCurrent);
+            intro.style.height = Math.max(0, expandedHeight - renderedCollapse) + 'px';
             introContent.style.transform = 'translate3d(0, ' + (-collapseCurrent) + 'px, 0)';
 
             if (Math.abs(collapseTarget - collapseCurrent) > 0.35) {

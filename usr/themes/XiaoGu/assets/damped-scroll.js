@@ -80,7 +80,8 @@
             const distance = target - current;
 
             if (Math.abs(distance) <= settings.threshold) {
-                current = target;
+                current = Math.round(target);
+                target = current;
                 lastApplied = current;
                 element.scrollTop = current;
                 frame = 0;
@@ -88,8 +89,8 @@
             }
 
             current += distance * settings.easing;
-            lastApplied = current;
-            element.scrollTop = current;
+            lastApplied = Math.round(current);
+            element.scrollTop = lastApplied;
             frame = window.requestAnimationFrame(animate);
         }
 
