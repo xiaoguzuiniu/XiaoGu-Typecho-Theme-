@@ -1,6 +1,10 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
+if (defined('__TYPECHO_ADMIN__')) {
+    \Typecho\Plugin::factory('admin/footer.php')->begin = 'renderXiaoGuThemeImagePicker';
+}
+
 /**
  * 主题初始化：拦截前端 AJAX 请求（浏览量、点赞、动态评论、友链申请）。
  *
@@ -367,7 +371,7 @@ function themeConfig($form)
         null,
         null,
         _t('首页头像地址'),
-        _t('填写完整图片 URL；留空时显示主题默认的 X 头像。')
+        _t('可以从附件库选择或直接上传；留空时显示主题默认头像。')
     );
     $form->addInput($profileAvatarUrl->addRule('url', _t('请填写正确的头像 URL 地址')));
 
@@ -376,7 +380,7 @@ function themeConfig($form)
         null,
         null,
         _t('首页头图地址'),
-        _t('填写完整图片 URL；留空时使用主题自带的雪山图片。')
+        _t('可以从附件库选择或直接上传；留空时使用主题自带的雪山图片。')
     );
     $form->addInput($heroImageUrl->addRule('url', _t('请填写正确的头图 URL 地址')));
 
@@ -397,6 +401,290 @@ function themeConfig($form)
         _t('每行一个站点，格式：站点名称|网站地址|头像地址|站点描述。头像和描述可以留空。')
     );
     $form->addInput($friendLinks);
+}
+
+function renderXiaoGuThemeImagePicker()
+{
+    $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+    if (basename((string) $requestPath) !== 'options-theme.php') {
+        return;
+    }
+
+    $attachments = \Widget\Contents\Attachment\Admin::allocWithAlias(
+        'xiaogu-theme-image-picker',
+        ['pageSize' => 500]
+    );
+    $images = [];
+
+    while ($attachments->next()) {
+        if (!$attachments->attachment->isImage) {
+            continue;
+        }
+
+        $images[] = [
+            'cid' => (int) $attachments->cid,
+            'name' => (string) $attachments->title,
+            'url' => (string) $attachments->attachment->url
+        ];
+    }
+
+    $uploadUrl = \Widget\Security::alloc()->getIndex('/action/upload');
+    ?>
+    <style>
+        .xiaogu-image-picker {
+            display: grid;
+            margin-top: 10px;
+            padding: 12px;
+            border: 1px solid #e6e6e6;
+            border-radius: 6px;
+            background: #fafafa;
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .xiaogu-image-picker select {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .xiaogu-image-picker-preview {
+            display: flex;
+            min-height: 48px;
+            margin-top: 2px;
+            grid-column: 1 / -1;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .xiaogu-image-picker-preview img {
+            width: 72px;
+            height: 48px;
+            border: 1px solid #e2e2e2;
+            border-radius: 5px;
+            background: #fff;
+            object-fit: cover;
+        }
+
+        .xiaogu-image-picker-preview img[hidden] {
+            display: none;
+        }
+
+        .xiaogu-image-picker-status {
+            color: #999;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .xiaogu-image-picker-status.is-error {
+            color: #c62828;
+        }
+
+        @media (max-width: 480px) {
+            .xiaogu-image-picker {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .xiaogu-image-picker select {
+                grid-column: 1 / -1;
+            }
+        }
+    </style>
+    <script>
+        (function () {
+            var uploadUrl = <?php echo json_encode(
+                $uploadUrl,
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+            ); ?>;
+            var images = <?php echo json_encode(
+                $images,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+            ); ?>;
+            var fields = [
+                {name: 'profileAvatarUrl', emptyLabel: '使用主题默认头像'},
+                {name: 'heroImageUrl', emptyLabel: '使用主题默认雪山图'}
+            ];
+            var pickers = [];
+
+            function setStatus(picker, message, isError) {
+                picker.status.textContent = message;
+                picker.status.classList.toggle('is-error', Boolean(isError));
+            }
+
+            function updatePreview(picker) {
+                var url = picker.input.value.trim();
+                picker.preview.hidden = !url;
+                picker.preview.removeAttribute('src');
+
+                if (url) {
+                    picker.preview.src = url;
+                    setStatus(picker, '当前图片预览', false);
+                } else {
+                    setStatus(picker, picker.config.emptyLabel, false);
+                }
+            }
+
+            function appendImageOption(picker, image) {
+                if (!image.url || Array.from(picker.select.options).some(function (option) {
+                    return option.value === image.url;
+                })) {
+                    return;
+                }
+
+                var option = document.createElement('option');
+                option.value = image.url;
+                option.textContent = image.name || ('图片 #' + image.cid);
+                picker.select.appendChild(option);
+            }
+
+            function selectImage(picker, url) {
+                picker.input.value = url;
+                picker.select.value = url;
+                picker.input.dispatchEvent(new Event('input', {bubbles: true}));
+                picker.input.dispatchEvent(new Event('change', {bubbles: true}));
+                updatePreview(picker);
+            }
+
+            function uploadImage(picker, file) {
+                if (!file || !file.type.startsWith('image/')) {
+                    setStatus(picker, '请选择图片文件', true);
+                    return;
+                }
+
+                var data = new FormData();
+                data.append('file', file);
+                picker.uploadButton.disabled = true;
+                setStatus(picker, '正在上传…', false);
+
+                fetch(uploadUrl, {
+                    method: 'POST',
+                    body: data,
+                    credentials: 'same-origin'
+                }).then(function (response) {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                }).then(function (result) {
+                    var attachment = Array.isArray(result) ? result[1] : null;
+                    if (!attachment || !attachment.isImage || !attachment.url) {
+                        throw new Error('上传结果无效');
+                    }
+
+                    var image = {
+                        cid: attachment.cid,
+                        name: attachment.title,
+                        url: attachment.url
+                    };
+                    images.unshift(image);
+                    pickers.forEach(function (item) {
+                        appendImageOption(item, image);
+                    });
+                    selectImage(picker, image.url);
+                    setStatus(picker, '上传成功，保存设置后生效', false);
+                }).catch(function (error) {
+                    setStatus(picker, '上传失败：' + error.message, true);
+                }).finally(function () {
+                    picker.fileInput.value = '';
+                    picker.uploadButton.disabled = false;
+                });
+            }
+
+            fields.forEach(function (config) {
+                var input = document.querySelector('input[name="' + config.name + '"]');
+                if (!input) return;
+
+                var panel = document.createElement('div');
+                panel.className = 'xiaogu-image-picker';
+
+                var select = document.createElement('select');
+                var placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = '从附件库选择图片…';
+                select.appendChild(placeholder);
+
+                var uploadButton = document.createElement('button');
+                uploadButton.type = 'button';
+                uploadButton.className = 'btn btn-s';
+                uploadButton.textContent = '上传图片';
+
+                var clearButton = document.createElement('button');
+                clearButton.type = 'button';
+                clearButton.className = 'btn btn-s';
+                clearButton.textContent = '使用默认图';
+
+                var fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = 'image/*';
+                fileInput.hidden = true;
+
+                var previewWrap = document.createElement('div');
+                previewWrap.className = 'xiaogu-image-picker-preview';
+                var preview = document.createElement('img');
+                preview.alt = '';
+                var status = document.createElement('span');
+                status.className = 'xiaogu-image-picker-status';
+                previewWrap.appendChild(preview);
+                previewWrap.appendChild(status);
+
+                panel.appendChild(select);
+                panel.appendChild(uploadButton);
+                panel.appendChild(clearButton);
+                panel.appendChild(fileInput);
+                panel.appendChild(previewWrap);
+                input.insertAdjacentElement('afterend', panel);
+
+                var picker = {
+                    config: config,
+                    input: input,
+                    select: select,
+                    uploadButton: uploadButton,
+                    fileInput: fileInput,
+                    preview: preview,
+                    status: status
+                };
+                images.forEach(function (image) {
+                    appendImageOption(picker, image);
+                });
+                pickers.push(picker);
+
+                if (input.value && !Array.from(select.options).some(function (option) {
+                    return option.value === input.value;
+                })) {
+                    appendImageOption(picker, {
+                        cid: 0,
+                        name: '当前填写的图片地址',
+                        url: input.value
+                    });
+                }
+                select.value = input.value;
+                updatePreview(picker);
+
+                select.addEventListener('change', function () {
+                    if (select.value) selectImage(picker, select.value);
+                });
+                uploadButton.addEventListener('click', function () {
+                    fileInput.click();
+                });
+                fileInput.addEventListener('change', function () {
+                    uploadImage(picker, fileInput.files[0]);
+                });
+                clearButton.addEventListener('click', function () {
+                    selectImage(picker, '');
+                });
+                input.addEventListener('input', function () {
+                    select.value = Array.from(select.options).some(function (option) {
+                        return option.value === input.value;
+                    }) ? input.value : '';
+                    updatePreview(picker);
+                });
+                preview.addEventListener('error', function () {
+                    preview.hidden = true;
+                    setStatus(picker, '图片地址无法加载', true);
+                });
+            });
+        }());
+    </script>
+    <?php
 }
 
 function themeFields($layout)
