@@ -54,9 +54,11 @@ if ($browserTitle === '') {
                             <?php endif; ?>
                             <div class="hero-profile">
                                 <?php if ($profileAvatarUrl !== ''): ?>
-                                    <img class="hero-avatar hero-avatar-image"
-                                         src="<?php echo htmlspecialchars($profileAvatarUrl, ENT_QUOTES, 'UTF-8'); ?>"
-                                         alt="" decoding="async">
+                                    <span class="hero-avatar hero-avatar-frame">
+                                        <img class="hero-avatar-image"
+                                             src="<?php $this->options->themeUrl('assets/hero-avatar.png?v=' . filemtime(__DIR__ . '/assets/hero-avatar.png')); ?>"
+                                             width="68" height="68" alt="" decoding="sync">
+                                    </span>
                                 <?php else: ?>
                                     <span class="hero-avatar" aria-hidden="true">X</span>
                                 <?php endif; ?>
