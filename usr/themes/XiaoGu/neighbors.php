@@ -4,10 +4,21 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 $profileName = trim((string) $this->options->profileName);
 $profileSignature = trim((string) $this->options->profileSignature);
 $profileAvatarUrl = trim((string) $this->options->profileAvatarUrl);
-$siteName = $profileName !== '' ? $profileName : (string) $this->options->title;
-$siteDescription = $profileSignature !== '' ? $profileSignature : (string) $this->options->description;
-$siteUrl = rtrim((string) $this->options->siteUrl, '/') . '/';
-$siteLogoUrl = $profileAvatarUrl;
+$friendSiteName = trim((string) $this->options->friendSiteName);
+$friendSiteDescription = trim((string) $this->options->friendSiteDescription);
+$friendSiteUrl = trim((string) $this->options->friendSiteUrl);
+$friendSiteLogoUrl = trim((string) $this->options->friendSiteLogoUrl);
+$siteName = $friendSiteName !== ''
+    ? $friendSiteName
+    : ($profileName !== '' ? $profileName : (string) $this->options->title);
+$siteDescription = $friendSiteDescription !== ''
+    ? $friendSiteDescription
+    : ($profileSignature !== '' ? $profileSignature : (string) $this->options->description);
+$siteUrl = rtrim(
+    $friendSiteUrl !== '' ? $friendSiteUrl : (string) $this->options->siteUrl,
+    '/'
+) . '/';
+$siteLogoUrl = $friendSiteLogoUrl !== '' ? $friendSiteLogoUrl : $profileAvatarUrl;
 if ($siteLogoUrl === '') {
     ob_start();
     $this->options->themeUrl('assets/favicon.svg');

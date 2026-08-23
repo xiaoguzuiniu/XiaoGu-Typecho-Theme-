@@ -25,6 +25,8 @@ $profileName = trim((string) $this->options->profileName);
 $profileSignature = trim((string) $this->options->profileSignature);
 $profileAvatarUrl = trim((string) $this->options->profileAvatarUrl);
 $heroImageUrl = trim((string) $this->options->heroImageUrl);
+$postCoverUrl = $isArticlePost ? getPostCover($this) : '';
+$detailHeroImageUrl = $postCoverUrl !== '' ? $postCoverUrl : $heroImageUrl;
 
 if ($profileName === '') {
     $profileName = (string) $this->options->title;
@@ -61,8 +63,8 @@ if ($profileSignature === '') {
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
                         <section class="post-detail-hero" aria-label="文章头图">
-                            <?php if ($heroImageUrl !== ''): ?>
-                                <img src="<?php echo htmlspecialchars($heroImageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="" decoding="async">
+                            <?php if ($detailHeroImageUrl !== ''): ?>
+                                <img src="<?php echo htmlspecialchars($detailHeroImageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="" decoding="async">
                             <?php else: ?>
                                 <img src="<?php $this->options->themeUrl('assets/mountain-hero.jpg'); ?>" alt="" decoding="async">
                             <?php endif; ?>

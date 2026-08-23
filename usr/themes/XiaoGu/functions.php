@@ -593,6 +593,42 @@ function themeConfig($form)
     );
     $form->addInput($heroImageUrl->addRule('url', _t('请填写正确的头图 URL 地址')));
 
+    $friendSiteName = new \Typecho\Widget\Helper\Form\Element\Text(
+        'friendSiteName',
+        null,
+        null,
+        _t('本站友链名称'),
+        _t('显示在邻居页面的“这是我的站点”信息卡中；留空时使用首页显示名称。')
+    );
+    $form->addInput($friendSiteName);
+
+    $friendSiteUrl = new \Typecho\Widget\Helper\Form\Element\Text(
+        'friendSiteUrl',
+        null,
+        null,
+        _t('本站友链网址'),
+        _t('留空时使用 Typecho 设置中的站点地址。')
+    );
+    $form->addInput($friendSiteUrl->addRule('url', _t('请填写正确的本站友链网址')));
+
+    $friendSiteLogoUrl = new \Typecho\Widget\Helper\Form\Element\Text(
+        'friendSiteLogoUrl',
+        null,
+        null,
+        _t('本站友链 LOGO'),
+        _t('可以从附件库选择或直接上传；留空时使用首页头像。')
+    );
+    $form->addInput($friendSiteLogoUrl->addRule('url', _t('请填写正确的 LOGO URL 地址')));
+
+    $friendSiteDescription = new \Typecho\Widget\Helper\Form\Element\Text(
+        'friendSiteDescription',
+        null,
+        null,
+        _t('本站友链描述'),
+        _t('留空时使用首页个性签名或站点描述。')
+    );
+    $form->addInput($friendSiteDescription);
+
     $friendContactEmail = new \Typecho\Widget\Helper\Form\Element\Text(
         'friendContactEmail',
         null,
@@ -615,18 +651,23 @@ function themeConfig($form)
 function renderXiaoGuThemeImagePicker()
 {
     $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
-    if (basename((string) $requestPath) !== 'options-theme.php') {
+    $adminPage = basename((string) $requestPath);
+    $isThemeOptions = $adminPage === 'options-theme.php';
+    $isPostEditor = $adminPage === 'write-post.php';
+    if (!$isThemeOptions && !$isPostEditor) {
         return;
     }
 
     $db = \Typecho\Db::get();
     $options = \Widget\Options::alloc();
     $security = \Widget\Security::alloc();
-    $neighborsPage = $db->fetchRow(
-        $db->select('cid')->from('table.contents')
-            ->where('slug = ? AND type = ?', 'neighbors', 'page')
-            ->limit(1)
-    );
+    $neighborsPage = $isThemeOptions
+        ? $db->fetchRow(
+            $db->select('cid')->from('table.contents')
+                ->where('slug = ? AND type = ?', 'neighbors', 'page')
+                ->limit(1)
+        )
+        : false;
     $applications = [];
     $reviewUrl = '';
 
@@ -681,7 +722,22 @@ function renderXiaoGuThemeImagePicker()
     }
 
     $uploadUrl = $security->getIndex('/action/upload');
+    $pickerFields = $isPostEditor
+        ? [
+            [
+                'name' => 'fields[postCover]',
+                'emptyLabel' => '留空时自动使用正文第一张图片；正文无图时使用默认头图',
+                'clearLabel' => '自动选择',
+                'attachToPost' => true,
+            ],
+        ]
+        : [
+            ['name' => 'profileAvatarUrl', 'emptyLabel' => '使用主题默认头像'],
+            ['name' => 'heroImageUrl', 'emptyLabel' => '使用主题默认雪山图'],
+            ['name' => 'friendSiteLogoUrl', 'emptyLabel' => '使用首页头像或主题默认图标'],
+        ];
     ?>
+    <?php if ($isThemeOptions): ?>
     <section class="xiaogu-friend-review" id="xiaogu-friend-review" style="display:none">
         <div class="xiaogu-friend-review-heading">
             <div>
@@ -724,6 +780,7 @@ function renderXiaoGuThemeImagePicker()
             </p>
         </div>
     </section>
+    <?php endif; ?>
     <style>
         .xiaogu-friend-review {
             margin: 0 0 24px;
@@ -908,10 +965,11 @@ function renderXiaoGuThemeImagePicker()
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
                 | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
             ); ?>;
-            var fields = [
-                {name: 'profileAvatarUrl', emptyLabel: '使用主题默认头像'},
-                {name: 'heroImageUrl', emptyLabel: '使用主题默认雪山图'}
-            ];
+            var fields = <?php echo json_encode(
+                $pickerFields,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+            ); ?>;
             var pickers = [];
 
             function setStatus(picker, message, isError) {
@@ -964,7 +1022,15 @@ function renderXiaoGuThemeImagePicker()
                 picker.uploadButton.disabled = true;
                 setStatus(picker, '正在上传…', false);
 
-                fetch(uploadUrl, {
+                var targetUrl = new URL(uploadUrl, window.location.href);
+                if (picker.config.attachToPost) {
+                    var cidInput = document.querySelector('input[name="cid"]');
+                    if (cidInput && cidInput.value) {
+                        targetUrl.searchParams.set('cid', cidInput.value);
+                    }
+                }
+
+                fetch(targetUrl.toString(), {
                     method: 'POST',
                     body: data,
                     credentials: 'same-origin'
@@ -986,8 +1052,20 @@ function renderXiaoGuThemeImagePicker()
                     pickers.forEach(function (item) {
                         appendImageOption(item, image);
                     });
+                    if (picker.config.attachToPost) {
+                        var form = document.forms.write_post;
+                        if (form && !form.querySelector(
+                            'input[name="attachment[]"][value="' + attachment.cid + '"]'
+                        )) {
+                            var attachmentInput = document.createElement('input');
+                            attachmentInput.type = 'hidden';
+                            attachmentInput.name = 'attachment[]';
+                            attachmentInput.value = attachment.cid;
+                            form.appendChild(attachmentInput);
+                        }
+                    }
                     selectImage(picker, image.url);
-                    setStatus(picker, '上传成功，保存设置后生效', false);
+                    setStatus(picker, '上传成功，保存后生效', false);
                 }).catch(function (error) {
                     setStatus(picker, '上传失败：' + error.message, true);
                 }).finally(function () {
@@ -1017,7 +1095,7 @@ function renderXiaoGuThemeImagePicker()
                 var clearButton = document.createElement('button');
                 clearButton.type = 'button';
                 clearButton.className = 'btn btn-s';
-                clearButton.textContent = '使用默认图';
+                clearButton.textContent = config.clearLabel || '使用默认图';
 
                 var fileInput = document.createElement('input');
                 fileInput.type = 'file';
@@ -1182,7 +1260,7 @@ function themeFields($layout)
         null,
         _t('文章封面图'),
         '<span style="display:block;padding-top:10px;line-height:1.6;">'
-            . _t('填写完整图片 URL；留空时自动提取文章内第一张图片，都没有则显示默认占位图。')
+            . _t('可以从附件库选择、直接上传或填写图片 URL；留空时自动提取正文第一张图片，正文无图时使用默认头图。')
             . '</span>'
     );
 
