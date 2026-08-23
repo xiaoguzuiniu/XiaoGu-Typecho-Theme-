@@ -325,19 +325,39 @@ if ($profileSignature === '') {
             resetOuterScroll();
         }
 
-        function restoreBrokenAvatars() {
-            const fallbackAvatarUrl = '<?php $this->options->themeUrl('assets/favicon.svg'); ?>';
+        function getAvatarInitial(authorName) {
+            const name = authorName.trim();
+            if (!name) return '?';
 
+            if (window.Intl && typeof Intl.Segmenter === 'function') {
+                const segments = Array.from(
+                    new Intl.Segmenter('zh-CN', {granularity: 'grapheme'}).segment(name)
+                );
+                if (segments.length) return segments[0].segment.toLocaleUpperCase();
+            }
+
+            return Array.from(name)[0].toLocaleUpperCase();
+        }
+
+        function restoreCommentAvatars() {
             document.querySelectorAll('.comment-author .avatar').forEach(function (avatar) {
-                function useFallbackAvatar() {
+                function useInitialAvatar() {
                     if (avatar.dataset.fallbackApplied === 'true') return;
                     avatar.dataset.fallbackApplied = 'true';
-                    avatar.src = fallbackAvatarUrl;
-                    avatar.style.display = '';
+
+                    const author = avatar.closest('.comment-author');
+                    const authorName = author
+                        ? (author.querySelector('.fn') || author).textContent
+                        : '';
+                    const fallback = document.createElement('span');
+                    fallback.className = 'comment-avatar-fallback';
+                    fallback.setAttribute('aria-hidden', 'true');
+                    fallback.textContent = getAvatarInitial(authorName);
+                    avatar.replaceWith(fallback);
                 }
 
-                avatar.addEventListener('error', useFallbackAvatar, { once: true });
-                if (avatar.complete && avatar.naturalWidth === 0) useFallbackAvatar();
+                avatar.addEventListener('error', useInitialAvatar, {once: true});
+                if (avatar.complete && avatar.naturalWidth === 0) useInitialAvatar();
             });
         }
 
@@ -345,7 +365,7 @@ if ($profileSignature === '') {
             window.requestAnimationFrame(function () {
                 window.requestAnimationFrame(function () {
                     positionCommentAnchor();
-                    restoreBrokenAvatars();
+                    restoreCommentAvatars();
                 });
             });
         }

@@ -13,6 +13,7 @@ $commentsLabel = $isGuestbookComments ? '留言' : '评论';
             <h2><?php $this->commentsNum('还没有' . $commentsLabel, '已有 1 条' . $commentsLabel, '已有 %d 条' . $commentsLabel); ?></h2>
             <?php $comments->listComments([
                 'avatarSize' => 0,
+                'defaultAvatar' => '404',
                 'dateFormat' => 'Y-m-d'
             ]); ?>
             <?php $comments->pageNav('上一页', '下一页'); ?>
@@ -20,7 +21,9 @@ $commentsLabel = $isGuestbookComments ? '留言' : '评论';
             <div class="post-comments-source" id="post-comments-source">
                 <?php $comments->listComments([
                     'dateFormat' => 'm-d H:i',
-                    'avatarSize' => 24
+                    'avatarSize' => 30,
+                    'defaultAvatar' => '404',
+                    'avatarHighRes' => true
                 ]); ?>
                 <?php $comments->pageNav('上一页', '下一页'); ?>
             </div>

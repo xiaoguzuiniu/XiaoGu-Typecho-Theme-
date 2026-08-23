@@ -1,6 +1,10 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
+if (!defined('__TYPECHO_GRAVATAR_PREFIX__')) {
+    define('__TYPECHO_GRAVATAR_PREFIX__', 'https://cravatar.cn/avatar/');
+}
+
 if (defined('__TYPECHO_ADMIN__')) {
     \Typecho\Plugin::factory('admin/footer.php')->begin = 'renderXiaoGuThemeImagePicker';
 }

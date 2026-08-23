@@ -235,9 +235,9 @@ a:hover {
 }
 
 .book-comment-list .comment-author .avatar {
-    width: 22px;
-    height: 22px;
-    margin-right: 9px;
+    width: 30px;
+    height: 30px;
+    margin-right: 8px;
 }
 
 .book-comment-list .comment-author .fn {
@@ -1215,6 +1215,7 @@ a:hover {
 }
 
 .moment-comments .comment-author .avatar,
+.moment-comments .comment-author .comment-avatar-fallback,
 .moment-comments .comment-meta,
 .moment-comments .comment-reply {
     display: none !important;
@@ -1766,6 +1767,22 @@ body.is-image-lightbox-open {
     margin-right: 8px;
     border-radius: 50%;
     vertical-align: middle;
+}
+
+.comment-author .comment-avatar-fallback {
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: #7d83ba;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    vertical-align: middle;
+    align-items: center;
+    justify-content: center;
 }
 
 .comment-meta,
