@@ -80,14 +80,23 @@ $activityCalendar = getSiteActivityCalendar();
         <h2>最近文章</h2>
         <ol class="recent-list">
             <?php $recentArticleNumber = 0; ?>
-            <?php \Widget\Contents\Post\Recent::alloc('pageSize=50')->to($recentPosts); ?>
-            <?php while ($recentArticleNumber < 5 && $recentPosts->next()): ?>
+            <?php \Widget\Contents\Post\Recent::alloc('pageSize=6')->to($recentPosts); ?>
+            <?php while ($recentArticleNumber < 6 && $recentPosts->next()): ?>
                 <?php $recentDisplayMode = (string) $recentPosts->fields->displayMode; ?>
-                <?php if ($recentDisplayMode === 'moment') continue; ?>
                 <?php $recentArticleNumber++; ?>
                 <li>
                     <span><?php echo str_pad((string) $recentArticleNumber, 2, '0', STR_PAD_LEFT); ?></span>
-                    <a href="<?php $recentPosts->permalink(); ?>"><?php $recentPosts->title(); ?></a>
+                    <?php if ($recentDisplayMode === 'moment'): ?>
+                        <a class="recent-moment-title" href="<?php $recentPosts->permalink(); ?>"><?php
+                            echo htmlspecialchars(
+                                getRecentMomentTitle((int) $recentPosts->cid),
+                                ENT_QUOTES,
+                                'UTF-8'
+                            );
+                        ?></a>
+                    <?php else: ?>
+                        <a href="<?php $recentPosts->permalink(); ?>"><?php $recentPosts->title(); ?></a>
+                    <?php endif; ?>
                 </li>
             <?php endwhile; ?>
         </ol>

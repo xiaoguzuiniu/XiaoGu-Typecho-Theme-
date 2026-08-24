@@ -1422,6 +1422,31 @@ function getPostLikes($widget)
 }
 
 /**
+ * 获取朋友圈动态在最近文章列表中的简短标题。
+ */
+function getRecentMomentTitle(int $cid): string
+{
+    $row = \Typecho\Db::get()->fetchRow(
+        \Typecho\Db::get()->select('text')
+            ->from('table.contents')
+            ->where('cid = ? AND type = ? AND status = ?', $cid, 'post', 'publish')
+            ->limit(1)
+    );
+    $content = $row ? (string) $row['text'] : '';
+
+    if (strpos($content, '<!--markdown-->') === 0) {
+        $content = \Utils\Markdown::convert(substr($content, 15));
+    }
+
+    $content = html_entity_decode(strip_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $content = trim((string) preg_replace('/\s+/u', ' ', $content));
+
+    return $content !== ''
+        ? \Typecho\Common::subStr($content, 0, 24, '…')
+        : '朋友圈动态';
+}
+
+/**
  * 获取侧边栏创作活动日历。
  *
  * @param int $weeks

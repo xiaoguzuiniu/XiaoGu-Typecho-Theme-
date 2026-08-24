@@ -3377,24 +3377,18 @@ button.activity-day:focus-visible {
 }
 
 .recent-list a {
-    display: -webkit-box;
+    display: block;
+    min-width: 0;
     overflow: hidden;
     color: #4f5677;
     font-size: 12px;
     line-height: 1.5;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .recent-list .recent-moment-title {
-    display: -webkit-box;
-    overflow: hidden;
-    color: #4f5677;
-    font-size: 12px;
     font-weight: 400;
-    line-height: 1.5;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
 }
 
 .site-footer {
