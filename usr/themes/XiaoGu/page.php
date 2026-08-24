@@ -58,7 +58,7 @@ if ($profileSignature === '') {
     <div class="site-shell">
         <?php $this->need('topbar.php'); ?>
 
-        <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php endif; ?>">
+        <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php elseif ($isGallery): ?> gallery-layout<?php endif; ?>">
             <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>" data-damped-scroll>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
@@ -112,10 +112,50 @@ if ($profileSignature === '') {
                                 <h1><?php $this->title(); ?></h1>
                                 <span>写下想说的话，也留下你来过的足迹。</span>
                             </header>
-                        <?php elseif ($isAbout || $isGallery): ?>
-                            <header class="<?php echo $isGallery ? 'gallery-hero' : 'about-hero'; ?>">
+                        <?php elseif ($isGallery): ?>
+                            <header class="gallery-hero">
                                 <h1><?php $this->title(); ?></h1>
-                                <span><?php echo $isGallery ? '收藏光影，也收藏生活里的片刻。' : '关于我，也关于这个小站。'; ?></span>
+                                <span>收藏光影，也收藏生活里的片刻。</span>
+                                <p class="gallery-count" data-gallery-count hidden><strong>0</strong> 张照片</p>
+                            </header>
+
+                            <div class="gallery-source-content page-content" data-gallery-source hidden>
+                                <?php $this->content(); ?>
+                            </div>
+
+                            <nav class="gallery-filters" aria-label="相册筛选" data-gallery-filters hidden></nav>
+
+                            <section class="gallery-grid" aria-label="照片墙" data-gallery-grid hidden></section>
+
+                            <section class="gallery-empty" data-gallery-empty hidden>
+                                <span class="gallery-empty-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M5.25 4.75h13.5a2.5 2.5 0 0 1 2.5 2.5v9.5a2.5 2.5 0 0 1-2.5 2.5H5.25a2.5 2.5 0 0 1-2.5-2.5v-9.5a2.5 2.5 0 0 1 2.5-2.5Z"/>
+                                        <path d="m4 16 4.25-4.25 3.1 3.1 2.15-2.15L20 18"/>
+                                        <circle cx="16.25" cy="9" r="1.5"/>
+                                    </svg>
+                                </span>
+                                <h2>光影正在整理中</h2>
+                                <p>这里暂时还是空的，过些时候再来看看吧。</p>
+                            </section>
+
+                            <div class="gallery-lightbox" data-gallery-lightbox role="dialog" aria-modal="true"
+                                 aria-label="照片预览" hidden>
+                                <button class="gallery-lightbox-close" type="button" aria-label="关闭照片预览">×</button>
+                                <button class="gallery-lightbox-nav gallery-lightbox-prev" type="button" aria-label="上一张照片">‹</button>
+                                <figure class="gallery-lightbox-figure">
+                                    <img class="gallery-lightbox-image" data-gallery-lightbox-image alt="">
+                                    <figcaption class="gallery-lightbox-caption">
+                                        <strong data-gallery-lightbox-title></strong>
+                                        <span data-gallery-lightbox-meta></span>
+                                    </figcaption>
+                                </figure>
+                                <button class="gallery-lightbox-nav gallery-lightbox-next" type="button" aria-label="下一张照片">›</button>
+                            </div>
+                        <?php elseif ($isAbout): ?>
+                            <header class="about-hero">
+                                <h1><?php $this->title(); ?></h1>
+                                <span>关于我，也关于这个小站。</span>
                             </header>
 
                             <div class="page-content">
@@ -142,7 +182,7 @@ if ($profileSignature === '') {
                 </article>
             </main>
 
-            <?php $this->need('sidebar.php'); ?>
+            <?php $this->need($isGallery ? 'gallery-sidebar.php' : 'sidebar.php'); ?>
         </div>
     </div>
 
@@ -375,7 +415,11 @@ if ($profileSignature === '') {
     }());
 </script>
 
-<script src="<?php $this->options->themeUrl('assets/image-lightbox.js?v=' . filemtime(__DIR__ . '/assets/image-lightbox.js')); ?>"></script>
+<?php if ($isGallery): ?>
+    <script src="<?php $this->options->themeUrl('assets/gallery.js?v=' . filemtime(__DIR__ . '/assets/gallery.js')); ?>"></script>
+<?php else: ?>
+    <script src="<?php $this->options->themeUrl('assets/image-lightbox.js?v=' . filemtime(__DIR__ . '/assets/image-lightbox.js')); ?>"></script>
+<?php endif; ?>
 <?php $this->footer(); ?>
 </body>
 </html>

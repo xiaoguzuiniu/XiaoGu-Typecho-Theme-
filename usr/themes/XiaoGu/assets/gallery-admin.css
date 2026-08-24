@@ -1,0 +1,348 @@
+.xiaogu-gallery-admin {
+    margin: 16px 0 22px;
+    padding: 18px;
+    border: 1px solid #e1e4ec;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(47, 55, 83, 0.05);
+}
+
+.xiaogu-gallery-admin-head,
+.xiaogu-gallery-toolbar,
+.xiaogu-gallery-upload-actions,
+.xiaogu-gallery-item-actions {
+    display: flex;
+    align-items: center;
+}
+
+.xiaogu-gallery-admin-head {
+    margin-bottom: 16px;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.xiaogu-gallery-admin-head h2,
+.xiaogu-gallery-admin-head p {
+    margin: 0;
+}
+
+.xiaogu-gallery-admin-head h2 {
+    color: #363b49;
+    font-size: 18px;
+}
+
+.xiaogu-gallery-admin-head p {
+    margin-top: 3px;
+    color: #9298a7;
+    font-size: 12px;
+}
+
+.xiaogu-gallery-toolbar {
+    margin-bottom: 12px;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.xiaogu-gallery-toolbar > label {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.xiaogu-gallery-toolbar > label span {
+    flex: 0 0 auto;
+    color: #626878;
+    font-size: 12px;
+}
+
+.xiaogu-gallery-toolbar input[type="text"] {
+    width: min(240px, 100%);
+}
+
+.xiaogu-gallery-upload-actions {
+    flex: 0 0 auto;
+    gap: 7px;
+}
+
+.xiaogu-gallery-dropzone {
+    display: grid;
+    min-height: 122px;
+    padding: 20px;
+    place-items: center;
+    align-content: center;
+    border: 1px dashed #cfd4e0;
+    border-radius: 9px;
+    background: #fafbfe;
+    color: #687085;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.xiaogu-gallery-dropzone:hover,
+.xiaogu-gallery-dropzone:focus-visible,
+.xiaogu-gallery-dropzone.is-dragging {
+    border-color: #467b96;
+    background: #f3f8fb;
+    outline: none;
+}
+
+.xiaogu-gallery-dropzone.is-dragging {
+    transform: scale(1.005);
+}
+
+.xiaogu-gallery-dropzone-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 7px;
+    place-items: center;
+    border-radius: 10px;
+    background: #e8f1f6;
+    color: #467b96;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.xiaogu-gallery-dropzone strong {
+    color: #4a5060;
+    font-size: 13px;
+}
+
+.xiaogu-gallery-dropzone small {
+    margin-top: 4px;
+    color: #969cab;
+    font-size: 11px;
+}
+
+.xiaogu-gallery-status {
+    min-height: 24px;
+    padding: 6px 0 4px;
+    color: #8a90a0;
+    font-size: 12px;
+}
+
+.xiaogu-gallery-status.is-uploading {
+    color: #467b96;
+}
+
+.xiaogu-gallery-status.is-success {
+    color: #42815d;
+}
+
+.xiaogu-gallery-status.is-error,
+.xiaogu-gallery-item-error {
+    color: #b94a48;
+}
+
+.xiaogu-gallery-items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.xiaogu-gallery-item {
+    display: grid;
+    min-width: 0;
+    padding: 10px;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 10px;
+    border: 1px solid #e4e6ed;
+    border-radius: 8px;
+    background: #fcfcfd;
+}
+
+.xiaogu-gallery-item-preview {
+    position: relative;
+    width: 96px;
+    height: 104px;
+    overflow: hidden;
+    border-radius: 7px;
+    background: #eceef3;
+}
+
+.xiaogu-gallery-item-preview img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.xiaogu-gallery-item-state {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 4px 6px;
+    background: rgba(35, 39, 50, 0.72);
+    color: #fff;
+    font-size: 10px;
+    text-align: center;
+}
+
+.xiaogu-gallery-item.is-ready .xiaogu-gallery-item-state {
+    display: none;
+}
+
+.xiaogu-gallery-item-fields {
+    display: grid;
+    min-width: 0;
+    gap: 7px;
+}
+
+.xiaogu-gallery-item-fields label,
+.xiaogu-gallery-item-fields span {
+    display: block;
+}
+
+.xiaogu-gallery-item-fields span {
+    margin-bottom: 3px;
+    color: #858b99;
+    font-size: 10px;
+}
+
+.xiaogu-gallery-item-fields input {
+    width: 100%;
+    min-height: 32px;
+    padding: 5px 7px;
+    font-size: 12px;
+}
+
+.xiaogu-gallery-item-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    gap: 5px;
+}
+
+.xiaogu-gallery-item-actions .btn {
+    min-width: 34px;
+}
+
+.xiaogu-gallery-delete {
+    color: #a75150;
+}
+
+.xiaogu-gallery-item-error {
+    margin: 0;
+    grid-column: 1 / -1;
+    font-size: 11px;
+}
+
+.xiaogu-gallery-admin-empty {
+    display: grid;
+    min-height: 108px;
+    place-items: center;
+    align-content: center;
+    border: 1px solid #eceef3;
+    border-radius: 8px;
+    color: #9a9fad;
+    text-align: center;
+}
+
+.xiaogu-gallery-admin-empty[hidden],
+.xiaogu-gallery-items[hidden] {
+    display: none;
+}
+
+.xiaogu-gallery-admin-empty strong,
+.xiaogu-gallery-admin-empty span {
+    display: block;
+}
+
+.xiaogu-gallery-admin-empty strong {
+    color: #696f7d;
+    font-size: 13px;
+}
+
+.xiaogu-gallery-admin-empty span {
+    margin-top: 3px;
+    font-size: 11px;
+}
+
+.xiaogu-gallery-source {
+    display: none !important;
+}
+
+.xiaogu-gallery-source.xiaogu-gallery-source-visible {
+    display: block !important;
+}
+
+.xiaogu-gallery-admin.is-source-mode .xiaogu-gallery-toolbar,
+.xiaogu-gallery-admin.is-source-mode .xiaogu-gallery-dropzone,
+.xiaogu-gallery-admin.is-source-mode .xiaogu-gallery-status,
+.xiaogu-gallery-admin.is-source-mode .xiaogu-gallery-items,
+.xiaogu-gallery-admin.is-source-mode .xiaogu-gallery-admin-empty {
+    display: none !important;
+}
+
+@media (max-width: 760px) {
+    .xiaogu-gallery-admin {
+        margin: 12px -4px 18px;
+        padding: 14px;
+    }
+
+    .xiaogu-gallery-admin-head,
+    .xiaogu-gallery-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .xiaogu-gallery-admin-head .btn {
+        min-height: 40px;
+    }
+
+    .xiaogu-gallery-toolbar > label {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .xiaogu-gallery-toolbar input[type="text"] {
+        width: 100%;
+        min-height: 42px;
+    }
+
+    .xiaogu-gallery-upload-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .xiaogu-gallery-upload-actions .btn {
+        min-height: 44px;
+    }
+
+    .xiaogu-gallery-dropzone {
+        min-height: 108px;
+        padding: 16px 12px;
+    }
+
+    .xiaogu-gallery-items {
+        grid-template-columns: 1fr;
+    }
+
+    .xiaogu-gallery-item {
+        grid-template-columns: 88px minmax(0, 1fr);
+    }
+
+    .xiaogu-gallery-item-preview {
+        width: 88px;
+        height: 112px;
+    }
+
+    .xiaogu-gallery-item-actions .btn {
+        min-height: 40px;
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+}
+
+@media (max-width: 390px) {
+    .xiaogu-gallery-item {
+        grid-template-columns: 72px minmax(0, 1fr);
+    }
+
+    .xiaogu-gallery-item-preview {
+        width: 72px;
+        height: 108px;
+    }
+}

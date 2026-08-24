@@ -11,6 +11,7 @@ use Typecho\Widget\Helper\Form;
 use Typecho\Widget\Helper\Form\Element\Password;
 use Typecho\Widget\Helper\Form\Element\Select;
 use Typecho\Widget\Helper\Form\Element\Text;
+use Utils\Helper;
 use Widget\Feedback;
 use Widget\Options;
 
@@ -35,12 +36,14 @@ class Plugin implements PluginInterface
     public static function activate()
     {
         TypechoPlugin::factory(Feedback::class)->finishComment = __CLASS__ . '::finishComment';
+        Helper::addAction('comment-mailer-webhook', WebhookAction::class);
 
         return _t('评论邮件通知已启用，请填写网易 163 邮箱和 SMTP 授权码。');
     }
 
     public static function deactivate()
     {
+        Helper::removeAction('comment-mailer-webhook');
     }
 
     public static function config(Form $form)
@@ -104,6 +107,54 @@ class Plugin implements PluginInterface
             _t('仅在回复已通过审核且原评论留有有效邮箱时发送。')
         );
         $form->addInput($notifyReply);
+
+        $enableEmailReplies = new Select(
+            'enableEmailReplies',
+            ['0' => _t('关闭'), '1' => _t('开启')],
+            '0',
+            _t('邮件回复自动发布'),
+            _t('开启后，收件人直接回复通知邮件即可将内容发布到网站评论区。需要先完成下方 Resend 配置。')
+        );
+        $form->addInput($enableEmailReplies);
+
+        $receivingDomain = new Text(
+            'receivingDomain',
+            null,
+            'reply.gulook.site',
+            _t('Resend 收信域名'),
+            _t('建议使用 reply.gulook.site，并在 Resend 中为该子域名配置接收邮件所需的 MX 记录。')
+        );
+        $form->addInput($receivingDomain);
+
+        $resendApiKey = new Password(
+            'resendApiKey',
+            null,
+            null,
+            _t('Resend API Key'),
+            _t('用于在收到 Webhook 后读取邮件正文。请在 Resend API Keys 页面创建。')
+        );
+        $form->addInput($resendApiKey);
+
+        $webhookSecret = new Password(
+            'webhookSecret',
+            null,
+            null,
+            _t('Resend Webhook Signing Secret'),
+            _t('在 Resend Webhook 详情页复制，以 whsec_ 开头。')
+        );
+        $form->addInput($webhookSecret);
+
+        $webhookUrl = rtrim((string) Options::alloc()->index, '/')
+            . '/action/comment-mailer-webhook';
+        $webhookEndpoint = new Text(
+            'webhookEndpoint',
+            null,
+            $webhookUrl,
+            _t('Webhook 地址'),
+            _t('将此地址添加到 Resend Webhooks，并只订阅 email.received。此字段仅用于复制，无需修改。')
+        );
+        $webhookEndpoint->input->setAttribute('readonly', 'readonly');
+        $form->addInput($webhookEndpoint);
     }
 
     public static function personalConfig(Form $form)
@@ -137,6 +188,13 @@ class Plugin implements PluginInterface
         $adminEmail = strtolower(trim((string) $settings->adminEmail));
         $authCode = trim((string) $settings->authCode);
         $senderName = trim((string) $settings->senderName);
+        $receivingDomain = self::normalizeReceivingDomain((string) $settings->receivingDomain);
+        $resendApiKey = trim((string) $settings->resendApiKey);
+        $webhookSecret = trim((string) $settings->webhookSecret);
+        $emailRepliesRequested = (string) $settings->enableEmailReplies === '1';
+        $emailRepliesConfigured = $receivingDomain !== ''
+            && $resendApiKey !== ''
+            && strpos($webhookSecret, 'whsec_') === 0;
 
         if (!filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
             throw new RuntimeException('163 发件邮箱未正确配置。');
@@ -158,6 +216,10 @@ class Plugin implements PluginInterface
             'senderName' => self::sanitizeHeader($senderName),
             'notifyAdmin' => (string) $settings->notifyAdmin !== '0',
             'notifyReply' => (string) $settings->notifyReply !== '0',
+            'enableEmailReplies' => $emailRepliesRequested && $emailRepliesConfigured,
+            'receivingDomain' => $receivingDomain,
+            'resendApiKey' => $resendApiKey,
+            'webhookSecret' => $webhookSecret,
         ];
     }
 
@@ -190,9 +252,15 @@ class Plugin implements PluginInterface
                         ['label' => '评论内容', 'content' => $commentText],
                     ],
                     $permalink,
-                    '查看评论'
+                    '查看评论',
+                    $config['enableEmailReplies']
                 ),
-                'replyTo' => filter_var($authorEmail, FILTER_VALIDATE_EMAIL) ? $authorEmail : null,
+                'replyTo' => self::notificationReplyTo(
+                    (int) $comment->coid,
+                    $config['adminEmail'],
+                    $authorEmail,
+                    $config
+                ),
             ];
         }
 
@@ -231,9 +299,15 @@ class Plugin implements PluginInterface
                     ['label' => '回复内容', 'content' => $commentText],
                 ],
                 $permalink,
-                '查看并回复'
+                '查看并回复',
+                $config['enableEmailReplies']
             ),
-            'replyTo' => filter_var($authorEmail, FILTER_VALIDATE_EMAIL) ? $authorEmail : null,
+            'replyTo' => self::notificationReplyTo(
+                (int) $comment->coid,
+                $parentEmail,
+                $authorEmail,
+                $config
+            ),
         ];
 
         return array_values($notifications);
@@ -255,12 +329,438 @@ class Plugin implements PluginInterface
         return $title !== '' ? $title : '未命名内容';
     }
 
+    private static function notificationReplyTo(
+        int $commentId,
+        string $recipient,
+        string $fallback,
+        array $config
+    ): ?string {
+        if ($config['enableEmailReplies']) {
+            $domain = self::normalizeReceivingDomain($config['receivingDomain']);
+            $expires = time() + 30 * 24 * 3600;
+            $commentPart = base_convert((string) $commentId, 10, 36);
+            $expiresPart = base_convert((string) $expires, 10, 36);
+            $signature = self::replySignature($commentId, $expires, $recipient);
+
+            return 'reply-' . $commentPart . '-' . $expiresPart . '-' . $signature . '@' . $domain;
+        }
+
+        return filter_var($fallback, FILTER_VALIDATE_EMAIL) ? $fallback : null;
+    }
+
+    public static function handleInboundWebhook(WebhookAction $action, string $payload, array $headers): array
+    {
+        $config = self::getConfig();
+        if (!$config['enableEmailReplies']) {
+            return ['status' => 'ignored', 'reason' => 'email replies disabled'];
+        }
+
+        self::verifyWebhook($payload, $headers, $config['webhookSecret']);
+        $event = json_decode($payload, true);
+        if (!is_array($event)) {
+            throw new \InvalidArgumentException('Webhook JSON 格式无效。');
+        }
+        if (($event['type'] ?? '') !== 'email.received') {
+            return ['status' => 'ignored', 'reason' => 'unsupported event'];
+        }
+
+        $emailId = isset($event['data']['email_id']) && is_scalar($event['data']['email_id'])
+            ? trim((string) $event['data']['email_id'])
+            : '';
+        if ($emailId === '' || !preg_match('/^[a-zA-Z0-9-]{8,100}$/', $emailId)) {
+            throw new \InvalidArgumentException('Webhook 缺少有效的邮件 ID。');
+        }
+
+        $dedupName = 'cmr:' . substr(hash('sha256', $emailId), 0, 28);
+        if (!self::reserveInboundEmail($dedupName, $emailId)) {
+            return ['status' => 'duplicate'];
+        }
+
+        try {
+            return self::processInboundEmail($action, $emailId, $config, $dedupName);
+        } catch (\Throwable $exception) {
+            Db::get()->query(
+                Db::get()->delete('table.options')->where('name = ? AND user = ?', $dedupName, 0)
+            );
+            throw $exception;
+        }
+    }
+
+    private static function processInboundEmail(
+        WebhookAction $action,
+        string $emailId,
+        array $config,
+        string $dedupName
+    ): array {
+        $duplicate = Db::get()->fetchRow(
+            Db::get()->select('coid')->from('table.comments')
+                ->where('agent = ?', 'CommentMailer/Resend ' . $emailId)
+                ->limit(1)
+        );
+        if ($duplicate) {
+            return ['status' => 'duplicate', 'commentId' => (int) $duplicate['coid']];
+        }
+
+        $email = self::retrieveReceivedEmail($emailId, $config['resendApiKey']);
+        if (self::isAutomatedEmail($email)) {
+            return ['status' => 'ignored', 'reason' => 'automated email'];
+        }
+
+        $senderEmail = self::extractEmailAddress((string) ($email['from'] ?? ''));
+        if (!filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
+            return ['status' => 'ignored', 'reason' => 'invalid sender'];
+        }
+
+        $replyTarget = null;
+        $toAddresses = isset($email['to']) && is_array($email['to']) ? $email['to'] : [];
+        foreach ($toAddresses as $toAddress) {
+            if (!is_scalar($toAddress)) {
+                continue;
+            }
+            $parsed = self::parseReplyAddress((string) $toAddress, $senderEmail, $config);
+            if ($parsed !== null) {
+                $replyTarget = $parsed;
+                break;
+            }
+        }
+        if ($replyTarget === null) {
+            return ['status' => 'ignored', 'reason' => 'reply address rejected'];
+        }
+
+        $parent = Db::get()->fetchRow(
+            Db::get()->select('coid', 'cid', 'status')
+                ->from('table.comments')
+                ->where('coid = ? AND type = ?', $replyTarget['commentId'], 'comment')
+                ->limit(1)
+        );
+        if (!$parent || (string) $parent['status'] !== 'approved') {
+            return ['status' => 'ignored', 'reason' => 'parent comment unavailable'];
+        }
+
+        $content = Db::get()->fetchRow(
+            Db::get()->select('cid', 'authorId', 'status', 'allowComment')
+                ->from('table.contents')
+                ->where('cid = ?', (int) $parent['cid'])
+                ->limit(1)
+        );
+        if (
+            !$content
+            || (string) $content['status'] !== 'publish'
+            || (int) $content['allowComment'] !== 1
+        ) {
+            return ['status' => 'ignored', 'reason' => 'comments closed'];
+        }
+
+        $replyText = self::extractReplyText(
+            isset($email['text']) && is_scalar($email['text']) ? (string) $email['text'] : '',
+            isset($email['html']) && is_scalar($email['html']) ? (string) $email['html'] : ''
+        );
+        if ($replyText === '') {
+            return ['status' => 'ignored', 'reason' => 'empty reply'];
+        }
+
+        $sender = self::senderIdentity((string) ($email['from'] ?? ''), $senderEmail);
+        $isAuthenticated = self::isAuthenticatedSender($email);
+        $commentStatus = $isAuthenticated ? 'approved' : 'waiting';
+        $commentId = $action->insertInboundComment([
+            'cid' => (int) $parent['cid'],
+            'created' => time(),
+            'author' => $sender['author'],
+            'authorId' => $sender['authorId'],
+            'ownerId' => (int) $content['authorId'],
+            'mail' => $senderEmail,
+            'url' => $sender['url'],
+            'ip' => '0.0.0.0',
+            'agent' => 'CommentMailer/Resend ' . $emailId,
+            'text' => $replyText,
+            'type' => 'comment',
+            'status' => $commentStatus,
+            'parent' => (int) $parent['coid'],
+        ]);
+        $action->loadInboundComment($commentId);
+        Feedback::pluginHandle()->call('finishComment', $action);
+        Db::get()->query(
+            Db::get()->update('table.options')
+                ->rows(['value' => 'comment:' . $commentId])
+                ->where('name = ? AND user = ?', $dedupName, 0)
+        );
+
+        return [
+            'status' => $commentStatus === 'approved' ? 'published' : 'waiting',
+            'commentId' => $commentId,
+        ];
+    }
+
+    private static function reserveInboundEmail(string $name, string $emailId): bool
+    {
+        try {
+            Db::get()->query(
+                Db::get()->insert('table.options')->rows([
+                    'name' => $name,
+                    'user' => 0,
+                    'value' => 'processing:' . $emailId,
+                ])
+            );
+
+            return true;
+        } catch (\Throwable $exception) {
+            $existing = Db::get()->fetchRow(
+                Db::get()->select('name')->from('table.options')
+                    ->where('name = ? AND user = ?', $name, 0)
+                    ->limit(1)
+            );
+            if ($existing) {
+                return false;
+            }
+
+            throw $exception;
+        }
+    }
+
+    private static function verifyWebhook(string $payload, array $headers, string $secret): void
+    {
+        if (strpos($secret, 'whsec_') !== 0) {
+            throw new RuntimeException('Resend Webhook Signing Secret 未正确配置。');
+        }
+
+        $messageId = trim((string) ($headers['svix-id'] ?? ''));
+        $timestamp = trim((string) ($headers['svix-timestamp'] ?? ''));
+        $signatures = trim((string) ($headers['svix-signature'] ?? ''));
+        if ($messageId === '' || !ctype_digit($timestamp) || $signatures === '') {
+            throw new \InvalidArgumentException('Webhook 签名头不完整。');
+        }
+        if (abs(time() - (int) $timestamp) > 300) {
+            throw new \InvalidArgumentException('Webhook 请求已过期。');
+        }
+
+        $key = base64_decode(substr($secret, 6), true);
+        if ($key === false) {
+            throw new RuntimeException('Webhook Signing Secret 格式无效。');
+        }
+
+        $expected = base64_encode(
+            hash_hmac('sha256', $messageId . '.' . $timestamp . '.' . $payload, $key, true)
+        );
+        foreach (preg_split('/\s+/', $signatures) ?: [] as $signature) {
+            $parts = explode(',', $signature, 2);
+            if (count($parts) === 2 && $parts[0] === 'v1' && hash_equals($expected, $parts[1])) {
+                return;
+            }
+        }
+
+        throw new \InvalidArgumentException('Webhook 签名验证失败。');
+    }
+
+    private static function retrieveReceivedEmail(string $emailId, string $apiKey): array
+    {
+        if ($apiKey === '' || !function_exists('curl_init')) {
+            throw new RuntimeException('Resend API Key 未配置或 PHP cURL 不可用。');
+        }
+
+        $curl = curl_init(
+            'https://api.resend.com/emails/receiving/' . rawurlencode($emailId)
+        );
+        if ($curl === false) {
+            throw new RuntimeException('无法初始化 Resend API 请求。');
+        }
+
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $apiKey,
+                'Accept: application/json',
+            ],
+        ]);
+        $response = curl_exec($curl);
+        $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $error = curl_error($curl);
+        curl_close($curl);
+
+        if (!is_string($response) || $status < 200 || $status >= 300) {
+            throw new RuntimeException(
+                '读取 Resend 邮件正文失败'
+                . ($status > 0 ? '（HTTP ' . $status . '）' : '')
+                . ($error !== '' ? '：' . $error : '。')
+            );
+        }
+
+        $email = json_decode($response, true);
+        if (!is_array($email)) {
+            throw new RuntimeException('Resend 邮件正文响应格式无效。');
+        }
+
+        return $email;
+    }
+
+    private static function isAutomatedEmail(array $email): bool
+    {
+        $headers = self::normalizedEmailHeaders($email);
+        $autoSubmitted = strtolower(trim($headers['auto-submitted'] ?? ''));
+        if ($autoSubmitted !== '' && $autoSubmitted !== 'no') {
+            return true;
+        }
+
+        foreach (['x-autoreply', 'x-autorespond', 'x-auto-response-suppress'] as $header) {
+            if (!empty($headers[$header])) {
+                return true;
+            }
+        }
+
+        return preg_match('/\b(bulk|junk|list)\b/i', $headers['precedence'] ?? '') === 1;
+    }
+
+    private static function isAuthenticatedSender(array $email): bool
+    {
+        $headers = self::normalizedEmailHeaders($email);
+        $authentication = $headers['authentication-results'] ?? '';
+
+        return preg_match('/\bdmarc=pass\b/i', $authentication) === 1
+            || (
+                preg_match('/\bspf=pass\b/i', $authentication) === 1
+                && preg_match('/\bdkim=pass\b/i', $authentication) === 1
+            );
+    }
+
+    private static function normalizedEmailHeaders(array $email): array
+    {
+        $headers = isset($email['headers']) && is_array($email['headers'])
+            ? $email['headers']
+            : [];
+        $normalized = [];
+        foreach ($headers as $name => $value) {
+            if (!is_scalar($value)) {
+                continue;
+            }
+            $normalized[strtolower((string) $name)] = trim((string) $value);
+        }
+
+        return $normalized;
+    }
+
+    private static function parseReplyAddress(string $address, string $senderEmail, array $config): ?array
+    {
+        $address = self::extractEmailAddress($address);
+        $domain = self::normalizeReceivingDomain($config['receivingDomain']);
+        if (
+            $domain === ''
+            || !preg_match(
+                '/^reply-([0-9a-z]+)-([0-9a-z]+)-([a-f0-9]{24})@'
+                . preg_quote($domain, '/')
+                . '$/i',
+                $address,
+                $matches
+            )
+        ) {
+            return null;
+        }
+
+        $commentId = (int) base_convert(strtolower($matches[1]), 36, 10);
+        $expires = (int) base_convert(strtolower($matches[2]), 36, 10);
+        if ($commentId <= 0 || $expires < time()) {
+            return null;
+        }
+
+        $expected = self::replySignature($commentId, $expires, $senderEmail);
+        if (!hash_equals($expected, strtolower($matches[3]))) {
+            return null;
+        }
+
+        return ['commentId' => $commentId, 'expires' => $expires];
+    }
+
+    private static function replySignature(int $commentId, int $expires, string $recipient): string
+    {
+        return substr(
+            hash_hmac(
+                'sha256',
+                $commentId . '|' . $expires . '|' . strtolower(trim($recipient)),
+                hash('sha256', (string) Options::alloc()->secret . '|CommentMailer|reply-token', true)
+            ),
+            0,
+            24
+        );
+    }
+
+    private static function extractReplyText(string $text, string $html): string
+    {
+        if (trim($text) === '' && trim($html) !== '') {
+            $html = preg_replace('/<(br|\/p|\/div|\/li)>/i', "\n", $html);
+            $html = html_entity_decode((string) $html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $text = strip_tags($html);
+        }
+
+        $text = str_replace(["\r\n", "\r", "\0"], ["\n", "\n", ''], $text);
+        $lines = preg_split('/\n/u', $text) ?: [];
+        $replyLines = [];
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if (
+                preg_match('/^(>+|--\s*$|_{5,}|-{5,}\s*(Original Message|原始邮件))/iu', $trimmed)
+                || preg_match('/^(On .+wrote:|在.+写道[：:]|发件人[：:]|From:)/iu', $trimmed)
+            ) {
+                break;
+            }
+            $replyLines[] = rtrim($line);
+        }
+
+        $reply = trim(implode("\n", $replyLines));
+        $reply = preg_replace("/\n{3,}/u", "\n\n", $reply);
+
+        return Common::subStr((string) $reply, 0, 5000, '…');
+    }
+
+    private static function senderIdentity(string $from, string $senderEmail): array
+    {
+        $user = Db::get()->fetchRow(
+            Db::get()->select('uid', 'screenName', 'url')
+                ->from('table.users')
+                ->where('mail = ?', $senderEmail)
+                ->limit(1)
+        );
+        if ($user) {
+            return [
+                'author' => trim((string) $user['screenName']) ?: strstr($senderEmail, '@', true),
+                'authorId' => (int) $user['uid'],
+                'url' => trim((string) $user['url']),
+            ];
+        }
+
+        $author = trim(preg_replace('/\s*<[^>]+>\s*$/u', '', $from));
+        $author = trim($author, " \t\n\r\0\x0B\"'");
+
+        return [
+            'author' => $author !== '' ? Common::subStr($author, 0, 150, '') : strstr($senderEmail, '@', true),
+            'authorId' => 0,
+            'url' => '',
+        ];
+    }
+
+    private static function extractEmailAddress(string $address): string
+    {
+        if (preg_match('/<([^<>]+)>/', $address, $matches)) {
+            $address = $matches[1];
+        }
+
+        return strtolower(trim($address));
+    }
+
+    private static function normalizeReceivingDomain(string $domain): string
+    {
+        $domain = strtolower(trim($domain));
+        $domain = preg_replace('#^https?://#', '', $domain);
+
+        return trim((string) $domain, " \t\n\r\0\x0B./");
+    }
+
     private static function renderMail(
         string $heading,
         string $summary,
         array $sections,
         string $permalink,
-        string $buttonText
+        string $buttonText,
+        bool $emailReplyEnabled
     ): string {
         $sectionHtml = '';
         foreach ($sections as $section) {
@@ -291,7 +791,9 @@ class Plugin implements PluginInterface
             . '<p style="margin:0;color:#666d88;font-size:14px;line-height:1.7">' . self::escape($summary) . '</p>'
             . $sectionHtml . $button
             . '<p style="margin:26px 0 0;color:#aaaec0;font-size:12px;line-height:1.6">'
-            . '此邮件由网站评论系统自动发送。直接回复邮件只会发送给对方，不会同步到网站评论区。'
+            . ($emailReplyEnabled
+                ? '此邮件由网站评论系统自动发送，直接回复邮件即可发布到网站评论区。'
+                : '此邮件由网站评论系统自动发送。直接回复邮件只会发送给对方，不会同步到网站评论区。')
             . '</p></div></body></html>';
     }
 

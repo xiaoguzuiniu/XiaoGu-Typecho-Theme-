@@ -658,13 +658,33 @@ function renderXiaoGuThemeImagePicker()
     $adminPage = basename((string) $requestPath);
     $isThemeOptions = $adminPage === 'options-theme.php';
     $isPostEditor = $adminPage === 'write-post.php';
-    if (!$isThemeOptions && !$isPostEditor) {
+    $isPageEditor = $adminPage === 'write-page.php';
+    if (!$isThemeOptions && !$isPostEditor && !$isPageEditor) {
         return;
     }
 
     $db = \Typecho\Db::get();
     $options = \Widget\Options::alloc();
     $security = \Widget\Security::alloc();
+
+    if ($isPageEditor) {
+        $pageCid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
+        $pageRow = $pageCid > 0
+            ? $db->fetchRow(
+                $db->select('cid', 'slug')->from('table.contents')
+                    ->where('cid = ? AND type = ?', $pageCid, 'page')
+                    ->limit(1)
+            )
+            : false;
+
+        if (!$pageRow || (string) $pageRow['slug'] !== 'gallery') {
+            return;
+        }
+
+        renderXiaoGuGalleryAdmin((int) $pageRow['cid'], $options, $security);
+        return;
+    }
+
     $neighborsPage = $isThemeOptions
         ? $db->fetchRow(
             $db->select('cid')->from('table.contents')
@@ -1240,6 +1260,43 @@ function renderXiaoGuThemeImagePicker()
             }
         }());
     </script>
+    <?php
+}
+
+/**
+ * 为相册独立页面提供移动端友好的批量图片管理器。
+ */
+function renderXiaoGuGalleryAdmin($cid, $options, $security)
+{
+    $uploadUrl = $security->getIndex('/action/upload');
+    $themeUrl = rtrim((string) $options->themeUrl, '/');
+    $scriptVersion = filemtime(__DIR__ . '/assets/gallery-admin.js');
+    $styleVersion = filemtime(__DIR__ . '/assets/gallery-admin.css');
+    $maxUploadSize = 0;
+    $phpMaxFilesize = function_exists('ini_get') ? trim((string) ini_get('upload_max_filesize')) : '';
+
+    if (preg_match('/^([0-9]+)([a-z]{1,2})?$/i', $phpMaxFilesize, $matches)) {
+        $unit = strtolower($matches[2] ?? 'b');
+        $unitIndex = stripos('bkmgtpezy', $unit[0]);
+        $maxUploadSize = (int) round((int) $matches[1] * pow(1024, $unitIndex === false ? 0 : $unitIndex));
+    }
+
+    $config = [
+        'cid' => (int) $cid,
+        'uploadUrl' => $uploadUrl,
+        'maxUploadSize' => $maxUploadSize,
+    ];
+    ?>
+    <link rel="stylesheet"
+          href="<?php echo htmlspecialchars($themeUrl . '/assets/gallery-admin.css?v=' . $styleVersion, ENT_QUOTES, 'UTF-8'); ?>">
+    <script>
+        window.XiaoGuGalleryAdminConfig = <?php echo json_encode(
+            $config,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        ); ?>;
+    </script>
+    <script src="<?php echo htmlspecialchars($themeUrl . '/assets/gallery-admin.js?v=' . $scriptVersion, ENT_QUOTES, 'UTF-8'); ?>"></script>
     <?php
 }
 
