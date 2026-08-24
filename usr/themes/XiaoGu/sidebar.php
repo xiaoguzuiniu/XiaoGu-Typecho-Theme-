@@ -12,14 +12,26 @@ $activityCalendar = getSiteActivityCalendar();
         <span class="weekday">星期<?php echo $weekdays[(int) date('w')]; ?></span>
     </section>
 
-    <section class="sidebar-block">
-        <h2>About Site</h2>
-        <p class="about-copy"><?php $this->options->description(); ?></p>
-        <ul class="site-links">
-            <li><a href="<?php $this->options->feedUrl(); ?>">◌ RSS 订阅</a></li>
-            <li><a href="<?php $this->options->siteUrl(); ?>">⌂ <?php $this->options->title(); ?></a></li>
-            <li><a href="<?php $this->options->adminUrl(); ?>">◇ 管理站点</a></li>
-        </ul>
+    <div class="sidebar-reserved-space" aria-hidden="true"></div>
+
+    <section class="sidebar-block health-summary" aria-label="今日健康数据展示示例">
+        <div class="health-summary-head">
+            <h2>今日健康</h2>
+            <div class="health-sync-time" aria-label="本次同步时间 14:00">
+                <time datetime="2026-08-24T14:00:00+08:00">14:00</time>
+            </div>
+        </div>
+
+        <div class="health-metrics">
+            <div class="health-metric">
+                <div class="health-metric-label"><span aria-hidden="true">🚶</span>今日步数</div>
+                <p><strong>6,528</strong><span>步</span></p>
+            </div>
+            <div class="health-metric">
+                <div class="health-metric-label"><span aria-hidden="true">🔥</span>活动消耗</div>
+                <p><strong>286</strong><span>kcal</span></p>
+            </div>
+        </div>
     </section>
 
     <section class="sidebar-block activity-block" aria-label="创作活动">

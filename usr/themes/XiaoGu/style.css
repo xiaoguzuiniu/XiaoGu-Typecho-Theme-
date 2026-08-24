@@ -3060,6 +3060,10 @@ body.is-gallery-lightbox-open {
     font-weight: 600;
 }
 
+.sidebar-reserved-space {
+    display: none;
+}
+
 .date-card {
     position: relative;
 }
@@ -3107,6 +3111,81 @@ body.is-gallery-lightbox-open {
     margin: 7px 0;
     color: #596189;
     font-size: 12px;
+}
+
+.health-summary {
+    position: relative;
+}
+
+.health-summary-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.health-summary .health-summary-head h2 {
+    margin: 0;
+}
+
+.health-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+}
+
+.health-metric {
+    min-width: 0;
+}
+
+.health-metric + .health-metric {
+    padding-left: 18px;
+    border-left: 1px solid rgba(91, 96, 139, 0.12);
+}
+
+.health-metric-label {
+    display: flex;
+    margin-bottom: 8px;
+    align-items: center;
+    gap: 7px;
+    color: #626989;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.health-metric-label span {
+    width: 18px;
+    font-size: 15px;
+    line-height: 1;
+    text-align: center;
+}
+
+.health-metric p {
+    display: flex;
+    margin: 0;
+    align-items: baseline;
+    gap: 4px;
+    color: #757ca4;
+}
+
+.health-metric strong {
+    color: #3f496f;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.035em;
+}
+
+.health-metric p span {
+    font-size: 10px;
+}
+
+.health-sync-time {
+    display: inline-flex;
+    align-items: center;
+    color: #989db4;
+    font-size: 10px;
 }
 
 .activity-block {
@@ -3475,6 +3554,11 @@ button.activity-day:focus-visible {
         flex-direction: column;
         overflow: hidden;
         border-left: 1px solid var(--line);
+    }
+
+    .sidebar-reserved-space {
+        display: block;
+        flex: 0 0 clamp(76px, 10vh, 96px);
     }
 
     .page-column {
@@ -4673,6 +4757,20 @@ html.is-theme-switching .hero-bio {
 [data-theme="dark"] .recent-list a,
 [data-theme="dark"] .recent-list .recent-moment-title {
     color: #c4c8d8;
+}
+
+[data-theme="dark"] .health-metric strong {
+    color: #e1e4f0;
+}
+
+[data-theme="dark"] .health-metric-label,
+[data-theme="dark"] .health-metric p,
+[data-theme="dark"] .health-sync-time {
+    color: #9298b0;
+}
+
+[data-theme="dark"] .health-metric + .health-metric {
+    border-color: rgba(183, 188, 212, 0.1);
 }
 
 [data-theme="dark"] .activity-day,
