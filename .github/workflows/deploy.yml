@@ -1,0 +1,76 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag, or commit SHA to deploy"
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Ubuntu server
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+
+      - name: Upload application
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -az --delete --delay-updates \
+            -e "ssh -i $HOME/.ssh/deploy_key -p $DEPLOY_PORT" \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.env' \
+            --exclude='.env.example' \
+            --exclude='config.inc.php' \
+            --exclude='db_data/' \
+            --exclude='usr/uploads/' \
+            --exclude='Dockerfile' \
+            --exclude='docker-compose.yml' \
+            ./ "$DEPLOY_USER@$DEPLOY_HOST:/var/www/xiaoguyouqu/"
+
+      - name: Verify deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "test -f /var/www/xiaoguyouqu/index.php && test -d /var/www/xiaoguyouqu/usr/uploads && php -l /var/www/xiaoguyouqu/index.php"

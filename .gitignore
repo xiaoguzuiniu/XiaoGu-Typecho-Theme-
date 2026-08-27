@@ -1,3 +1,4 @@
 config.inc.php
 .env
 db_data/
+usr/uploads/
