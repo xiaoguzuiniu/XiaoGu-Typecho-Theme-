@@ -4839,6 +4839,18 @@ html.is-theme-switching .hero-bio {
         isolation: isolate;
     }
 
+    .header-actions .theme-toggle:hover,
+    .header-actions .theme-toggle:active {
+        background: transparent;
+        color: #465071;
+    }
+
+    [data-theme="dark"] .header-actions .theme-toggle:hover,
+    [data-theme="dark"] .header-actions .theme-toggle:active {
+        background: transparent;
+        color: #f1d47e;
+    }
+
     .header-actions .theme-toggle .theme-icon {
         position: absolute;
         top: 50%;
@@ -4875,27 +4887,10 @@ html.is-theme-switching .hero-bio {
         transform: translate(-50%, -50%) rotate(0deg) scale(1);
     }
 
-    html.is-theme-switching .header-actions .theme-toggle {
-        animation: mobile-theme-toggle-pulse 360ms ease;
-    }
-}
-
-@keyframes mobile-theme-toggle-pulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 transparent;
-    }
-
-    45% {
-        box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 12%, transparent);
-    }
 }
 
 @media (max-width: 640px) and (prefers-reduced-motion: reduce) {
     .header-actions .theme-toggle .theme-icon {
         transition: none;
-    }
-
-    html.is-theme-switching .header-actions .theme-toggle {
-        animation: none;
     }
 }
