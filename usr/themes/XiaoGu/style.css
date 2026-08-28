@@ -1665,6 +1665,9 @@ a:hover {
     margin: 0;
     place-items: center;
     gap: 12px;
+    touch-action: pan-y pinch-zoom;
+    user-select: none;
+    will-change: transform, opacity;
 }
 
 .image-lightbox-image {
@@ -1711,6 +1714,44 @@ a:hover {
     background: rgba(255, 255, 255, 0.22);
     outline: none;
     transform: scale(1.05);
+}
+
+.image-lightbox-counter {
+    position: fixed;
+    z-index: 1;
+    top: max(30px, env(safe-area-inset-top));
+    left: 50%;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+    transform: translateX(-50%);
+}
+
+.image-lightbox-nav {
+    position: fixed;
+    z-index: 1;
+    top: 50%;
+    display: grid;
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font: 200 32px/1 Arial, sans-serif;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.image-lightbox-prev {
+    left: 20px;
+}
+
+.image-lightbox-next {
+    right: 20px;
 }
 
 html.is-image-lightbox-open,
@@ -4856,6 +4897,20 @@ html.is-theme-switching .hero-bio {
     select {
         /* iOS 会自动放大字号小于 16px 的已聚焦表单控件。 */
         font-size: 16px !important;
+    }
+
+    .image-lightbox {
+        padding: 64px 14px 52px;
+        overscroll-behavior: contain;
+    }
+
+    .image-lightbox-image {
+        max-width: calc(100vw - 28px);
+        max-height: calc(100dvh - 150px);
+    }
+
+    .image-lightbox-nav {
+        display: none;
     }
 
     /* 主题按钮保持固定槽位，两枚图标在同一中心点完成交接。 */
