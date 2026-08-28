@@ -2454,6 +2454,17 @@ body.is-image-lightbox-open {
     font-weight: 200;
 }
 
+.gallery-lightbox-counter {
+    position: fixed;
+    top: max(28px, env(safe-area-inset-top));
+    left: 50%;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+    transform: translateX(-50%);
+}
+
 html.is-gallery-lightbox-open,
 body.is-gallery-lightbox-open {
     overflow: hidden;
@@ -4307,6 +4318,9 @@ button.activity-day:focus-visible {
     .gallery-lightbox-figure {
         max-height: calc(100vh - 134px);
         grid-column: 1;
+        touch-action: pan-y pinch-zoom;
+        user-select: none;
+        will-change: transform, opacity;
     }
 
     .gallery-lightbox-image {

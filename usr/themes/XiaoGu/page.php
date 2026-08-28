@@ -142,6 +142,7 @@ if ($profileSignature === '') {
                             <div class="gallery-lightbox" data-gallery-lightbox role="dialog" aria-modal="true"
                                  aria-label="照片预览" hidden>
                                 <button class="gallery-lightbox-close" type="button" aria-label="关闭照片预览">×</button>
+                                <span class="gallery-lightbox-counter" data-gallery-lightbox-counter aria-live="polite"></span>
                                 <button class="gallery-lightbox-nav gallery-lightbox-prev" type="button" aria-label="上一张照片">‹</button>
                                 <figure class="gallery-lightbox-figure">
                                     <img class="gallery-lightbox-image" data-gallery-lightbox-image alt="">
