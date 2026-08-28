@@ -4829,3 +4829,73 @@ html.is-theme-switching .hero-bio {
         background: rgba(139, 137, 255, 0.16);
     }
 }
+
+@media (max-width: 640px) {
+    /* 主题按钮保持固定槽位，两枚图标在同一中心点完成交接。 */
+    .header-actions .theme-toggle {
+        position: relative;
+        flex: 0 0 32px;
+        overflow: hidden;
+        isolation: isolate;
+    }
+
+    .header-actions .theme-toggle .theme-icon {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        display: block;
+        width: 18px;
+        height: 18px;
+        transform-origin: center;
+        pointer-events: none;
+        transition:
+            opacity 280ms ease,
+            transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .header-actions .theme-toggle .theme-icon-moon {
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    }
+
+    .header-actions .theme-toggle .theme-icon-sun {
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(-105deg) scale(0.35);
+    }
+
+    [data-theme="dark"] .header-actions .theme-toggle .theme-icon-moon {
+        display: block;
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(105deg) scale(0.35);
+    }
+
+    [data-theme="dark"] .header-actions .theme-toggle .theme-icon-sun {
+        display: block;
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    }
+
+    html.is-theme-switching .header-actions .theme-toggle {
+        animation: mobile-theme-toggle-pulse 360ms ease;
+    }
+}
+
+@keyframes mobile-theme-toggle-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+
+    45% {
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 12%, transparent);
+    }
+}
+
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+    .header-actions .theme-toggle .theme-icon {
+        transition: none;
+    }
+
+    html.is-theme-switching .header-actions .theme-toggle {
+        animation: none;
+    }
+}

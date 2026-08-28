@@ -214,7 +214,7 @@ if ($mobileNavName === '') {
             applyTheme(root.dataset.theme === 'dark' ? 'light' : 'dark', true);
             window.setTimeout(function () {
                 root.classList.remove('is-theme-switching');
-            }, 220);
+            }, 360);
         });
 
         const handleSystemTheme = function () {
