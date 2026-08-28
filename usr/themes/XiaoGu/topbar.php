@@ -287,6 +287,7 @@ if ($mobileNavName === '') {
         const form = document.querySelector('.search-form');
         const input = form ? form.querySelector('input[type="search"]') : null;
         const button = form ? form.querySelector('button') : null;
+        const mobile = window.matchMedia('(max-width: 640px)');
         if (!form || !input || !button) return;
 
         function setOpen(open) {
@@ -298,7 +299,7 @@ if ($mobileNavName === '') {
         button.addEventListener('click', function () {
             if (!form.classList.contains('is-open')) {
                 setOpen(true);
-                input.focus();
+                if (!mobile.matches) input.focus();
                 return;
             }
 
