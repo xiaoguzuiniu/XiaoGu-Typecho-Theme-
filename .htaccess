@@ -1,2 +1,3 @@
 RewriteEngine On
 RewriteRule ^api/steps/?$ api/steps.php [L,QSA]
+RewriteRule ^api/moments/?$ api/moments.php [L,QSA]
