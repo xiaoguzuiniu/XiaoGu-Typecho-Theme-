@@ -20,6 +20,7 @@ services:
       TYPECHO_DB_USER: ${MYSQL_USER:-typecho}
       TYPECHO_DB_PASSWORD: ${MYSQL_PASSWORD:-typecho}
       TYPECHO_DB_NAME: ${MYSQL_DATABASE:-typecho}
+      HEALTH_API_TOKEN: ${HEALTH_API_TOKEN:-}
 
   db:
     image: mysql:8.0

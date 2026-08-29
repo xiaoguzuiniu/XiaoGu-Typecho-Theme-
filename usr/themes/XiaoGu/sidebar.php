@@ -1,6 +1,20 @@
 <?php
 $weekdays = ['日', '一', '二', '三', '四', '五', '六'];
 $activityCalendar = getSiteActivityCalendar();
+$healthRecord = null;
+
+try {
+    require_once __TYPECHO_ROOT_DIR__ . '/api/health.php';
+    $healthRecord = xiaoguHealthFindByDate(\Typecho\Db::get(), date('Y-m-d'));
+} catch (\Throwable $error) {
+    // 首次同步前数据表可能尚未创建，侧边栏继续以未同步状态展示。
+    $healthRecord = null;
+}
+
+$healthSteps = $healthRecord ? (int) $healthRecord['steps'] : 0;
+$healthEnergy = $healthRecord ? (float) $healthRecord['active_energy'] : 0.0;
+$healthEnergyDisplay = rtrim(rtrim(number_format($healthEnergy, 2, '.', ','), '0'), '.');
+$healthSyncTime = $healthRecord ? substr((string) $healthRecord['update_time'], 0, 5) : '未同步';
 ?>
 
 <aside class="site-sidebar" aria-label="站点侧边栏">
@@ -14,22 +28,26 @@ $activityCalendar = getSiteActivityCalendar();
 
     <div class="sidebar-reserved-space" aria-hidden="true"></div>
 
-    <section class="sidebar-block health-summary" aria-label="今日健康数据展示示例">
+    <section class="sidebar-block health-summary" aria-label="今日健康数据">
         <div class="health-summary-head">
             <h2>今日健康</h2>
-            <div class="health-sync-time" aria-label="本次同步时间 14:00">
-                <time datetime="2026-08-24T14:00:00+08:00">14:00</time>
+            <div class="health-sync-time" aria-label="<?php echo $healthRecord ? '本次同步时间 ' . htmlspecialchars($healthSyncTime, ENT_QUOTES, 'UTF-8') : '今日健康数据尚未同步'; ?>">
+                <?php if ($healthRecord): ?>
+                    <time datetime="<?php echo htmlspecialchars((string) $healthRecord['date'] . 'T' . (string) $healthRecord['update_time'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($healthSyncTime, ENT_QUOTES, 'UTF-8'); ?></time>
+                <?php else: ?>
+                    <span>未同步</span>
+                <?php endif; ?>
             </div>
         </div>
 
         <div class="health-metrics">
             <div class="health-metric">
                 <div class="health-metric-label"><span aria-hidden="true">🚶</span>今日步数</div>
-                <p><strong>6,528</strong><span>步</span></p>
+                <p><strong><?php echo number_format($healthSteps); ?></strong><span>步</span></p>
             </div>
             <div class="health-metric">
                 <div class="health-metric-label"><span aria-hidden="true">🔥</span>活动消耗</div>
-                <p><strong>286</strong><span>kcal</span></p>
+                <p><strong><?php echo htmlspecialchars($healthEnergyDisplay, ENT_QUOTES, 'UTF-8'); ?></strong><span>kcal</span></p>
             </div>
         </div>
     </section>

@@ -1,0 +1,2 @@
+RewriteEngine On
+RewriteRule ^api/steps/?$ api/steps.php [L,QSA]

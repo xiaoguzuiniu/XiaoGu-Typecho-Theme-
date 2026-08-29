@@ -7,6 +7,12 @@
  * @version    $Id: index.php 1153 2009-07-02 10:53:22Z magike.net $
  */
 
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+if (is_string($requestPath) && rtrim($requestPath, '/') === '/api/steps') {
+    require __DIR__ . '/api/steps.php';
+    exit;
+}
+
 /** 载入配置支持 */
 if (!defined('__TYPECHO_ROOT_DIR__') && !@include_once 'config.inc.php') {
     file_exists('./install.php') ? header('Location: install.php') : print('Missing Config File');
