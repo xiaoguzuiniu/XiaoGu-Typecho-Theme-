@@ -1681,15 +1681,6 @@ a:hover {
     box-shadow: 0 24px 72px rgba(0, 0, 0, 0.38);
 }
 
-.image-lightbox-caption {
-    max-width: min(760px, calc(100vw - 64px));
-    margin: 0;
-    color: rgba(255, 255, 255, 0.84);
-    font-size: 13px;
-    line-height: 1.5;
-    text-align: center;
-}
-
 .image-lightbox-close {
     position: fixed;
     z-index: 1;
@@ -1730,7 +1721,7 @@ a:hover {
 
 .image-lightbox-nav {
     position: fixed;
-    z-index: 1;
+    z-index: 3;
     top: 50%;
     display: grid;
     width: 46px;
@@ -1743,6 +1734,7 @@ a:hover {
     color: #fff;
     font: 200 32px/1 Arial, sans-serif;
     cursor: pointer;
+    pointer-events: auto;
     transform: translateY(-50%);
 }
 
@@ -4926,7 +4918,6 @@ html.is-theme-switching .hero-bio {
 
     .image-lightbox-close,
     .image-lightbox-counter,
-    .image-lightbox-caption,
     .image-lightbox-nav {
         display: none;
     }

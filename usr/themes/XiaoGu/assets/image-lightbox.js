@@ -5,7 +5,6 @@
     let lightbox = null;
     let figure = null;
     let previewImage = null;
-    let caption = null;
     let counter = null;
     let closeButton = null;
     let previousButton = null;
@@ -50,22 +49,28 @@
             '<button class="image-lightbox-nav image-lightbox-prev" type="button" aria-label="上一张图片">‹</button>',
             '<figure class="image-lightbox-figure">',
             '<img class="image-lightbox-image" alt="">',
-            '<figcaption class="image-lightbox-caption"></figcaption>',
             '</figure>',
             '<button class="image-lightbox-nav image-lightbox-next" type="button" aria-label="下一张图片">›</button>'
         ].join('');
 
         figure = lightbox.querySelector('.image-lightbox-figure');
         previewImage = lightbox.querySelector('.image-lightbox-image');
-        caption = lightbox.querySelector('.image-lightbox-caption');
         counter = lightbox.querySelector('.image-lightbox-counter');
         closeButton = lightbox.querySelector('.image-lightbox-close');
         previousButton = lightbox.querySelector('.image-lightbox-prev');
         nextButton = lightbox.querySelector('.image-lightbox-next');
 
         closeButton.addEventListener('click', closeLightbox);
-        previousButton.addEventListener('click', function () { showImage(activeIndex - 1); });
-        nextButton.addEventListener('click', function () { showImage(activeIndex + 1); });
+        previousButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            showImage(activeIndex - 1);
+        });
+        nextButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            showImage(activeIndex + 1);
+        });
         lightbox.addEventListener('click', function (event) {
             if (event.target === lightbox) closeLightbox();
         });
@@ -114,8 +119,6 @@
 
         previewImage.src = source;
         previewImage.alt = image.alt || '';
-        caption.textContent = image.alt || '';
-        caption.hidden = !image.alt;
         counter.textContent = (activeIndex + 1) + ' / ' + activeImages.length;
         counter.hidden = activeImages.length < 2;
         previousButton.hidden = activeIndex === 0;
