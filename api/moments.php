@@ -81,6 +81,68 @@ function momentsApiFiles(): array
     return $files;
 }
 
+function momentsApiBase64Images(array $payload): array
+{
+    if (!isset($payload['images_base64'])) {
+        return [];
+    }
+    if (!is_string($payload['images_base64'])) {
+        momentsApiRespond(400, 400, 'Invalid parameter: images_base64');
+    }
+
+    $value = trim($payload['images_base64']);
+    if ($value === '') {
+        return [];
+    }
+    if (strlen($value) > 120 * 1024 * 1024) {
+        momentsApiRespond(400, 400, 'Encoded images are too large');
+    }
+
+    $encodedImages = explode('|XIAOGU_IMAGE|', $value);
+    if (count($encodedImages) > 9) {
+        momentsApiRespond(400, 400, 'A maximum of 9 images is allowed');
+    }
+
+    $images = [];
+    foreach ($encodedImages as $index => $encodedImage) {
+        $encodedImage = preg_replace('/\s+/u', '', trim($encodedImage));
+        if (!is_string($encodedImage) || $encodedImage === '') {
+            momentsApiRespond(400, 400, 'Invalid encoded image: ' . ($index + 1));
+        }
+
+        $bytes = base64_decode($encodedImage, true);
+        if ($bytes === false || $bytes === '') {
+            momentsApiRespond(400, 400, 'Invalid encoded image: ' . ($index + 1));
+        }
+        if (strlen($bytes) > 12 * 1024 * 1024) {
+            momentsApiRespond(400, 400, 'Image ' . ($index + 1) . ' exceeds the 12 MB limit');
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
+        $extension = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'image/avif' => 'avif',
+            'image/heic' => 'heic',
+            'image/heif' => 'heif',
+        ][$mime] ?? null;
+        if ($extension === null) {
+            momentsApiRespond(400, 400, 'Invalid image type: ' . ($index + 1));
+        }
+
+        $images[] = [
+            'name' => 'moment-' . date('Ymd-His') . '-' . ($index + 1) . '.' . $extension,
+            'bytes' => $bytes,
+            'size' => strlen($bytes),
+            'type' => $mime,
+        ];
+    }
+
+    return $images;
+}
+
 function momentsApiContentHtml(string $content, array $imageUrls): string
 {
     $paragraphs = preg_split('/\R{2,}/u', trim($content)) ?: [];
@@ -147,7 +209,7 @@ if (strlen($content) > 100000) {
     momentsApiRespond(400, 400, 'Content is too long');
 }
 
-$files = momentsApiFiles();
+$files = array_merge(momentsApiFiles(), momentsApiBase64Images($payload));
 if (count($files) > 9) {
     momentsApiRespond(400, 400, 'A maximum of 9 images is allowed');
 }
@@ -163,14 +225,20 @@ try {
 
     foreach ($files as $index => $file) {
         $number = $index + 1;
-        if ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            throw new \RuntimeException('Image ' . $number . ' upload failed');
+        $hasBytes = isset($file['bytes']) && is_string($file['bytes']);
+        if (!$hasBytes && (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            throw new \RuntimeException(
+                'Image ' . $number . ' upload failed (error '
+                . (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) . ')'
+            );
         }
         if ((int) ($file['size'] ?? 0) <= 0 || (int) $file['size'] > 12 * 1024 * 1024) {
             throw new \RuntimeException('Image ' . $number . ' exceeds the 12 MB limit');
         }
 
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file((string) $file['tmp_name']);
+        $mime = $hasBytes
+            ? (new \finfo(FILEINFO_MIME_TYPE))->buffer($file['bytes'])
+            : (new \finfo(FILEINFO_MIME_TYPE))->file((string) $file['tmp_name']);
         if (!in_array($mime, [
             'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif',
             'image/heic', 'image/heif'
