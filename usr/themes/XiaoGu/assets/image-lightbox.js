@@ -1,6 +1,7 @@
 (function () {
     const imageSelector = '.moment-content img, .page-content img';
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const mobileViewport = window.matchMedia('(max-width: 640px)');
     let lightbox = null;
     let figure = null;
     let previewImage = null;
@@ -18,6 +19,7 @@
     let swipeDeltaX = 0;
     let swipeIntent = null;
     let swipeAnimating = false;
+    let suppressPreviewClick = false;
     let animationTimers = [];
 
     function schedule(callback, delay) {
@@ -72,6 +74,14 @@
         figure.addEventListener('touchmove', handleTouchMove, {passive: false});
         figure.addEventListener('touchend', handleTouchEnd);
         figure.addEventListener('touchcancel', cancelSwipe);
+        figure.addEventListener('click', function () {
+            if (!mobileViewport.matches) return;
+            if (suppressPreviewClick || swipeAnimating) {
+                suppressPreviewClick = false;
+                return;
+            }
+            closeLightbox();
+        });
 
         document.body.appendChild(lightbox);
     }
@@ -154,6 +164,7 @@
 
     function handleTouchStart(event) {
         if (swipeAnimating || activeImages.length < 2 || event.touches.length !== 1) return;
+        suppressPreviewClick = false;
         swipeStartX = event.touches[0].clientX;
         swipeStartY = event.touches[0].clientY;
         swipeStartTime = Date.now();
@@ -176,6 +187,7 @@
         if (swipeIntent !== 'horizontal') return;
 
         event.preventDefault();
+        suppressPreviewClick = true;
         swipeDeltaX = deltaX;
         figure.style.transform = 'translate3d(' + deltaX + 'px, 0, 0)';
         figure.style.opacity = String(1 - Math.min(Math.abs(deltaX) / window.innerWidth * 0.34, 0.25));

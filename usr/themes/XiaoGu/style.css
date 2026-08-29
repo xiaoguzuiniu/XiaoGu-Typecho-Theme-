@@ -4900,15 +4900,33 @@ html.is-theme-switching .hero-bio {
     }
 
     .image-lightbox {
-        padding: 64px 14px 52px;
+        padding: 0;
+        background: #000;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
         overscroll-behavior: contain;
     }
 
-    .image-lightbox-image {
-        max-width: calc(100vw - 28px);
-        max-height: calc(100dvh - 150px);
+    .image-lightbox-figure {
+        width: 100vw;
+        height: 100dvh;
+        max-width: none;
+        max-height: none;
+        gap: 0;
     }
 
+    .image-lightbox-image {
+        width: 100vw;
+        height: 100dvh;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .image-lightbox-close,
+    .image-lightbox-counter,
+    .image-lightbox-caption,
     .image-lightbox-nav {
         display: none;
     }
