@@ -198,7 +198,8 @@
     function preloadAdjacentPhotos() {
         if (visiblePhotos.length < 2) return;
         [-1, 1].forEach(function (offset) {
-            const index = (activePhotoIndex + offset + visiblePhotos.length) % visiblePhotos.length;
+            const index = activePhotoIndex + offset;
+            if (index < 0 || index >= visiblePhotos.length) return;
             const image = new Image();
             image.src = visiblePhotos[index].original;
         });
@@ -206,15 +207,15 @@
 
     function showPhoto(index) {
         if (!visiblePhotos.length) return;
-        activePhotoIndex = (index + visiblePhotos.length) % visiblePhotos.length;
+        activePhotoIndex = Math.max(0, Math.min(index, visiblePhotos.length - 1));
         const photo = visiblePhotos[activePhotoIndex];
         previewImage.src = photo.original;
         previewImage.alt = photo.alt;
         previewTitle.textContent = photo.title;
         previewMeta.textContent = photo.meta || photo.album;
         previewCounter.textContent = (activePhotoIndex + 1) + ' / ' + visiblePhotos.length;
-        previousButton.hidden = visiblePhotos.length < 2;
-        nextButton.hidden = visiblePhotos.length < 2;
+        previousButton.hidden = activePhotoIndex === 0;
+        nextButton.hidden = activePhotoIndex === visiblePhotos.length - 1;
         preloadAdjacentPhotos();
     }
 
@@ -228,6 +229,11 @@
 
     function finishSwipe(direction) {
         if (swipeAnimating) return;
+        if ((direction < 0 && activePhotoIndex === 0)
+            || (direction > 0 && activePhotoIndex === visiblePhotos.length - 1)) {
+            resetSwipePosition(true);
+            return;
+        }
         swipeAnimating = true;
         const exitX = direction > 0 ? -window.innerWidth : window.innerWidth;
 
@@ -304,6 +310,13 @@
         if (swipeIntent !== 'horizontal') return;
 
         event.preventDefault();
+        const atStart = activePhotoIndex === 0 && deltaX > 0;
+        const atEnd = activePhotoIndex === visiblePhotos.length - 1 && deltaX < 0;
+        if (atStart || atEnd) {
+            swipeDeltaX = 0;
+            resetSwipePosition(false);
+            return;
+        }
         swipeDeltaX = deltaX;
         previewFigure.style.transform = 'translate3d(' + deltaX + 'px, 0, 0)';
         previewFigure.style.opacity = String(1 - Math.min(Math.abs(deltaX) / window.innerWidth * 0.32, 0.24));

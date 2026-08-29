@@ -97,7 +97,8 @@
     function preloadAdjacentImages() {
         if (activeImages.length < 2) return;
         [-1, 1].forEach(function (offset) {
-            const index = (activeIndex + offset + activeImages.length) % activeImages.length;
+            const index = activeIndex + offset;
+            if (index < 0 || index >= activeImages.length) return;
             const source = activeImages[index].currentSrc || activeImages[index].src;
             if (!source) return;
             const image = new Image();
@@ -107,7 +108,7 @@
 
     function showImage(index) {
         if (!activeImages.length) return;
-        activeIndex = (index + activeImages.length) % activeImages.length;
+        activeIndex = Math.max(0, Math.min(index, activeImages.length - 1));
         const image = activeImages[activeIndex];
         const source = image.currentSrc || image.src;
 
@@ -117,8 +118,8 @@
         caption.hidden = !image.alt;
         counter.textContent = (activeIndex + 1) + ' / ' + activeImages.length;
         counter.hidden = activeImages.length < 2;
-        previousButton.hidden = activeImages.length < 2;
-        nextButton.hidden = activeImages.length < 2;
+        previousButton.hidden = activeIndex === 0;
+        nextButton.hidden = activeIndex === activeImages.length - 1;
         preloadAdjacentImages();
     }
 
@@ -132,6 +133,11 @@
 
     function finishSwipe(direction) {
         if (swipeAnimating) return;
+        if ((direction < 0 && activeIndex === 0)
+            || (direction > 0 && activeIndex === activeImages.length - 1)) {
+            resetFigurePosition(true);
+            return;
+        }
         if (reducedMotion.matches) {
             showImage(activeIndex + direction);
             resetFigurePosition(false);
@@ -188,6 +194,13 @@
 
         event.preventDefault();
         suppressPreviewClick = true;
+        const atStart = activeIndex === 0 && deltaX > 0;
+        const atEnd = activeIndex === activeImages.length - 1 && deltaX < 0;
+        if (atStart || atEnd) {
+            swipeDeltaX = 0;
+            resetFigurePosition(false);
+            return;
+        }
         swipeDeltaX = deltaX;
         figure.style.transform = 'translate3d(' + deltaX + 'px, 0, 0)';
         figure.style.opacity = String(1 - Math.min(Math.abs(deltaX) / window.innerWidth * 0.34, 0.25));
