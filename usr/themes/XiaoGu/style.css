@@ -3578,6 +3578,7 @@ button.activity-day:focus-visible {
         overflow-y: auto;
         overflow-anchor: none;
         overscroll-behavior: contain;
+        will-change: transform;
         scrollbar-width: none;
         -ms-overflow-style: none;
     }

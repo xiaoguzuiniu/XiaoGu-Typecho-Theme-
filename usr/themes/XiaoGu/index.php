@@ -138,8 +138,8 @@ if ($browserTitle === '') {
                                     </div>
                                 </header>
 
-                                <div class="moment-content">
-                                    <?php echo $this->content; ?>
+                                <div class="moment-content" data-gallery-ready="true">
+                                    <?php echo renderXiaoGuMomentContent((string) $this->content); ?>
                                 </div>
 
                                 <footer class="moment-foot">
@@ -283,7 +283,9 @@ if ($browserTitle === '') {
 
             if (!desktop.matches) {
                 intro.style.removeProperty('height');
+                intro.style.removeProperty('margin-bottom');
                 introContent.style.removeProperty('transform');
+                postList.style.removeProperty('transform');
                 return;
             }
 
@@ -294,9 +296,8 @@ if ($browserTitle === '') {
                 collapseCurrent += distance * 0.18;
             }
 
-            const renderedCollapse = Math.round(collapseCurrent);
-            intro.style.height = Math.max(0, expandedHeight - renderedCollapse) + 'px';
             introContent.style.transform = 'translate3d(0, ' + (-collapseCurrent) + 'px, 0)';
+            postList.style.transform = 'translate3d(0, ' + (maxCollapse - collapseCurrent) + 'px, 0)';
 
             if (Math.abs(collapseTarget - collapseCurrent) > 0.35) {
                 frame = window.requestAnimationFrame(render);
@@ -318,6 +319,8 @@ if ($browserTitle === '') {
 
             expandedHeight = introContent.offsetHeight;
             maxCollapse = Math.min(180, Math.max(0, hero.offsetHeight - 110));
+            intro.style.height = expandedHeight + 'px';
+            intro.style.marginBottom = (-maxCollapse) + 'px';
             collapseCurrent = Math.min(collapseCurrent, maxCollapse);
             collapseTarget = Math.min(collapseTarget, maxCollapse);
             render();
@@ -381,6 +384,14 @@ if ($browserTitle === '') {
     (function () {
         function enhanceMoments(root) {
             const scope = root || document;
+
+            scope.querySelectorAll('img[data-full-src]:not([data-thumbnail-fallback-ready])').forEach(function (image) {
+                image.setAttribute('data-thumbnail-fallback-ready', 'true');
+                image.addEventListener('error', function () {
+                    const original = image.dataset.fullSrc;
+                    if (original && image.src !== original) image.src = original;
+                }, { once: true });
+            });
 
             scope.querySelectorAll('.moment-content:not([data-gallery-ready])').forEach(function (content) {
                 content.setAttribute('data-gallery-ready', 'true');

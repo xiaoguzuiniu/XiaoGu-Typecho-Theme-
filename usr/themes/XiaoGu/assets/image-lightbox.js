@@ -95,8 +95,12 @@
         const scope = image.closest('.moment-content, .page-content');
         if (!scope) return [image];
         return Array.from(scope.querySelectorAll('img')).filter(function (item) {
-            return Boolean(item.currentSrc || item.src);
+            return Boolean(imageSource(item));
         });
+    }
+
+    function imageSource(image) {
+        return image.dataset.fullSrc || image.currentSrc || image.src;
     }
 
     function preloadAdjacentImages() {
@@ -104,7 +108,7 @@
         [-1, 1].forEach(function (offset) {
             const index = activeIndex + offset;
             if (index < 0 || index >= activeImages.length) return;
-            const source = activeImages[index].currentSrc || activeImages[index].src;
+            const source = imageSource(activeImages[index]);
             if (!source) return;
             const image = new Image();
             image.src = source;
@@ -115,7 +119,7 @@
         if (!activeImages.length) return;
         activeIndex = Math.max(0, Math.min(index, activeImages.length - 1));
         const image = activeImages[activeIndex];
-        const source = image.currentSrc || image.src;
+        const source = imageSource(image);
 
         previewImage.src = source;
         previewImage.alt = image.alt || '';

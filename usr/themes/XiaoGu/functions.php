@@ -1400,6 +1400,178 @@ function getPostCover($widget)
 }
 
 /**
+ * 获取七牛插件当前配置的访问域名。
+ */
+function getXiaoGuQiniuConfiguredOrigin(): string
+{
+    static $configuredOrigin = null;
+    if ($configuredOrigin === null) {
+        $configuredOrigin = '';
+        try {
+            $domain = trim((string) \Widget\Options::alloc()->plugin('QiniuStorage')->domain);
+            if ($domain !== '' && !preg_match('#^https?://#i', $domain)) {
+                $domain = 'https://' . $domain;
+            }
+            if (parse_url($domain, PHP_URL_HOST)) {
+                $configuredOrigin = rtrim($domain, '/');
+            }
+        } catch (\Throwable $error) {
+            $configuredOrigin = '';
+        }
+    }
+
+    return $configuredOrigin;
+}
+
+function isXiaoGuQiniuTestHost(string $host): bool
+{
+    return (bool) preg_match('/(?:^|\.)(?:clouddn\.com|qiniucdn\.com|qiniudn\.com|qnssl\.com|qbox\.me)$/i', $host);
+}
+
+/**
+ * 让旧文章里的七牛测试域名在绑定正式域名后自动切换到正式域名。
+ */
+function getXiaoGuQiniuDeliveryUrl(string $url): string
+{
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    $origin = getXiaoGuQiniuConfiguredOrigin();
+    $configuredHost = strtolower((string) parse_url($origin, PHP_URL_HOST));
+    if ($host === '' || $configuredHost === '' || !isXiaoGuQiniuTestHost($host)
+        || isXiaoGuQiniuTestHost($configuredHost)) {
+        return $url;
+    }
+
+    $parts = parse_url($url);
+    if (!is_array($parts)) {
+        return $url;
+    }
+
+    $deliveryUrl = $origin . '/' . ltrim((string) ($parts['path'] ?? ''), '/');
+    if (isset($parts['query']) && $parts['query'] !== '') {
+        $deliveryUrl .= '?' . $parts['query'];
+    }
+    if (isset($parts['fragment']) && $parts['fragment'] !== '') {
+        $deliveryUrl .= '#' . $parts['fragment'];
+    }
+
+    return $deliveryUrl;
+}
+
+/**
+ * 为首页动态生成七牛缩略图地址，详情灯箱仍使用原始地址。
+ */
+function getXiaoGuMomentThumbnailUrl(string $url): string
+{
+    $origin = getXiaoGuQiniuConfiguredOrigin();
+    $configuredHost = strtolower((string) parse_url($origin, PHP_URL_HOST));
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    if ($configuredHost === '' || isXiaoGuQiniuTestHost($configuredHost)
+        || !hash_equals($configuredHost, $host) || stripos($url, 'imageMogr2/') !== false) {
+        return $url;
+    }
+
+    $fragment = '';
+    $fragmentPosition = strpos($url, '#');
+    if ($fragmentPosition !== false) {
+        $fragment = substr($url, $fragmentPosition);
+        $url = substr($url, 0, $fragmentPosition);
+    }
+
+    $separator = strpos($url, '?') === false ? '?' : '&';
+    return $url . $separator
+        . 'imageMogr2/auto-orient/thumbnail/800x800>/strip/format/webp/quality/78/interlace/1'
+        . $fragment;
+}
+
+/**
+ * 在服务端把朋友圈正文中的图片整理成九宫格，避免首屏加载后再由 JS 重排 DOM。
+ */
+function renderXiaoGuMomentContent(string $content): string
+{
+    if (trim($content) === '' || stripos($content, '<img') === false || !class_exists('DOMDocument')) {
+        return $content;
+    }
+
+    $previousErrors = libxml_use_internal_errors(true);
+    $document = new \DOMDocument('1.0', 'UTF-8');
+    $wrapperId = 'xiaogu-moment-root';
+    $loaded = $document->loadHTML(
+        '<?xml encoding="UTF-8" ?><div id="' . $wrapperId . '">' . $content . '</div>',
+        LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors($previousErrors);
+
+    if (!$loaded) {
+        return $content;
+    }
+
+    $wrapper = $document->getElementById($wrapperId);
+    if (!$wrapper) {
+        return $content;
+    }
+
+    $images = [];
+    foreach ($wrapper->getElementsByTagName('img') as $image) {
+        $images[] = $image;
+    }
+    if (!$images) {
+        return $content;
+    }
+
+    $gallery = $document->createElement('div');
+    $gallery->setAttribute('class', 'moment-gallery is-count-' . count($images));
+    $movedItems = [];
+
+    foreach ($images as $image) {
+        $sourceUrl = trim((string) $image->getAttribute('src'));
+        if ($sourceUrl !== '') {
+            $originalUrl = getXiaoGuQiniuDeliveryUrl($sourceUrl);
+            $thumbnailUrl = getXiaoGuMomentThumbnailUrl($originalUrl);
+            if ($thumbnailUrl !== $sourceUrl) {
+                $image->setAttribute('src', $thumbnailUrl);
+            }
+            if ($thumbnailUrl !== $originalUrl) {
+                $image->setAttribute('data-full-src', $originalUrl);
+            }
+        }
+        $image->setAttribute('loading', 'lazy');
+        $image->setAttribute('decoding', 'async');
+        $image->setAttribute('fetchpriority', 'low');
+
+        $item = $image;
+        if ($image->parentNode instanceof \DOMElement
+            && strtolower($image->parentNode->tagName) === 'a') {
+            $item = $image->parentNode;
+        }
+
+        $itemId = spl_object_id($item);
+        if (isset($movedItems[$itemId])) {
+            continue;
+        }
+        $movedItems[$itemId] = true;
+        $oldParent = $item->parentNode;
+        $gallery->appendChild($item);
+
+        if ($oldParent instanceof \DOMElement
+            && strtolower($oldParent->tagName) === 'p'
+            && trim((string) $oldParent->textContent) === ''
+            && !$oldParent->getElementsByTagName('*')->length
+            && $oldParent->parentNode) {
+            $oldParent->parentNode->removeChild($oldParent);
+        }
+    }
+
+    $wrapper->appendChild($gallery);
+    $html = '';
+    foreach ($wrapper->childNodes as $child) {
+        $html .= (string) $document->saveHTML($child);
+    }
+
+    return $html !== '' ? $html : $content;
+}
+
+/**
  * 获取文章浏览量。
  *
  * @param \Widget\Base\Contents $widget
