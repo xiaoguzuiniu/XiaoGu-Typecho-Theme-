@@ -561,6 +561,15 @@ function themeConfig($form)
     );
     $form->addInput($browserTitle);
 
+    $icpBeianNumber = new \Typecho\Widget\Helper\Form\Element\Text(
+        'icpBeianNumber',
+        null,
+        null,
+        _t('ICP备案号'),
+        _t('例如：京ICP备00000000号-1。填写后将显示在网站底部，并链接至工信部备案查询网站；留空时不显示。')
+    );
+    $form->addInput($icpBeianNumber);
+
     $profileName = new \Typecho\Widget\Helper\Form\Element\Text(
         'profileName',
         null,

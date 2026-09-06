@@ -3437,12 +3437,23 @@ button.activity-day:focus-visible {
 
 .site-footer {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
+    gap: 6px 10px;
     margin-top: auto;
     padding: 18px 0 0;
     background: transparent;
     color: #9a9eb7;
     font-size: 11px;
+}
+
+.site-footer a {
+    color: inherit;
+}
+
+.site-footer a:hover {
+    color: var(--primary);
 }
 
 /* 桌面端固定页面框架，仅文章列表区域允许上下滚动 */
