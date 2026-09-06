@@ -3437,10 +3437,10 @@ button.activity-day:focus-visible {
 
 .site-footer {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-end;
-    gap: 6px 10px;
+    gap: 8px;
     margin-top: auto;
     padding: 18px 0 0;
     background: transparent;
@@ -3450,6 +3450,7 @@ button.activity-day:focus-visible {
 
 .site-footer a {
     color: inherit;
+    white-space: nowrap;
 }
 
 .site-footer a:hover {
