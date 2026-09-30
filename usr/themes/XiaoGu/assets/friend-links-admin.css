@@ -1,0 +1,187 @@
+.xiaogu-friends-source {
+    display: none !important;
+}
+
+.xiaogu-friends-option > .typecho-label,
+.xiaogu-friends-option > .description {
+    display: none;
+}
+
+.xiaogu-friends-admin {
+    margin: 8px 0 22px;
+    padding: 16px;
+    border: 1px solid #e4e7f1;
+    border-radius: 9px;
+    background: #fafbff;
+    container-type: inline-size;
+}
+
+.xiaogu-friends-heading,
+.xiaogu-friends-actions,
+.xiaogu-friend-card,
+.xiaogu-friend-card-main,
+.xiaogu-friend-card-buttons {
+    display: flex;
+    align-items: center;
+}
+
+.xiaogu-friends-heading {
+    margin-bottom: 14px;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.xiaogu-friends-heading h3,
+.xiaogu-friends-heading p {
+    margin: 0;
+}
+
+.xiaogu-friends-heading p,
+.xiaogu-friends-count,
+.xiaogu-friends-empty {
+    color: #8990a6;
+    font-size: 12px;
+}
+
+.xiaogu-friends-form {
+    display: grid;
+    padding: 14px;
+    border: 1px solid #e5e8f1;
+    border-radius: 8px;
+    background: #fff;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 11px 14px;
+}
+
+.xiaogu-friends-field {
+    min-width: 0;
+}
+
+.xiaogu-friends-field label {
+    display: block;
+    margin-bottom: 5px;
+    color: #687086;
+    font-size: 12px;
+}
+
+.xiaogu-friends-field input {
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.xiaogu-friends-field.is-wide {
+    grid-column: 1 / -1;
+}
+
+.xiaogu-friends-avatar-input {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+}
+
+.xiaogu-friends-avatar-preview,
+.xiaogu-friend-card-avatar {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e3e5ed;
+    border-radius: 8px;
+    background: #f2f3f8;
+    color: #737b93;
+    font-size: 12px;
+    font-weight: 700;
+    object-fit: cover;
+    place-items: center;
+}
+
+.xiaogu-friends-actions {
+    margin-top: 10px;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.xiaogu-friends-message {
+    min-height: 20px;
+    margin-right: auto;
+    color: #c62828;
+    font-size: 12px;
+}
+
+.xiaogu-friends-list {
+    display: grid;
+    margin-top: 14px;
+    gap: 8px;
+}
+
+.xiaogu-friend-card {
+    padding: 10px 12px;
+    border: 1px solid #e6e8f0;
+    border-radius: 8px;
+    background: #fff;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.xiaogu-friend-card-main {
+    min-width: 0;
+    gap: 10px;
+}
+
+.xiaogu-friend-card-copy {
+    min-width: 0;
+}
+
+.xiaogu-friend-card-copy strong,
+.xiaogu-friend-card-copy a,
+.xiaogu-friend-card-copy small {
+    display: block;
+    overflow: hidden;
+    line-height: 1.45;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.xiaogu-friend-card-copy a {
+    color: #467bba;
+    font-size: 12px;
+}
+
+.xiaogu-friend-card-copy small {
+    color: #9298aa;
+}
+
+.xiaogu-friend-card-buttons {
+    flex: 0 0 auto;
+    gap: 6px;
+}
+
+.xiaogu-friends-empty {
+    margin: 0;
+    padding: 20px;
+    border: 1px dashed #dfe2eb;
+    border-radius: 8px;
+    text-align: center;
+}
+
+@container (max-width: 500px) {
+    .xiaogu-friends-form {
+        grid-template-columns: 1fr;
+    }
+
+    .xiaogu-friends-field.is-wide {
+        grid-column: auto;
+    }
+
+    .xiaogu-friend-card {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .xiaogu-friend-card-buttons {
+        justify-content: flex-end;
+    }
+}

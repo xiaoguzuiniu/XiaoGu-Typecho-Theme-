@@ -666,8 +666,7 @@ function themeConfig($form)
         'friendLinks',
         null,
         null,
-        _t('友链列表'),
-        _t('每行一个站点，格式：站点名称|网站地址|头像地址|站点描述。头像和描述可以留空。')
+        _t('友链列表')
     );
     $form->addInput($friendLinks);
 }
@@ -1345,6 +1344,12 @@ function renderXiaoGuThemeImagePicker()
             ); ?>;
         </script>
         <script src="<?php $options->themeUrl('assets/hope-admin.js?v=' . filemtime(__DIR__ . '/assets/hope-admin.js')); ?>"></script>
+        <link rel="stylesheet"
+              href="<?php $options->themeUrl('assets/friend-links-admin.css?v=' . filemtime(__DIR__ . '/assets/friend-links-admin.css')); ?>">
+        <script src="<?php $options->themeUrl('assets/friend-links-admin.js?v=' . filemtime(__DIR__ . '/assets/friend-links-admin.js')); ?>"></script>
+        <link rel="stylesheet"
+              href="<?php $options->themeUrl('assets/theme-settings-tabs.css?v=' . filemtime(__DIR__ . '/assets/theme-settings-tabs.css')); ?>">
+        <script src="<?php $options->themeUrl('assets/theme-settings-tabs.js?v=' . filemtime(__DIR__ . '/assets/theme-settings-tabs.js')); ?>"></script>
     <?php endif; ?>
     <?php
 }

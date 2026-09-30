@@ -1,0 +1,120 @@
+.xiaogu-settings-shell {
+    margin-bottom: 22px;
+    border: 1px solid #e3e6ef;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(48, 56, 90, .045);
+    overflow: hidden;
+}
+
+.xiaogu-settings-tabs {
+    display: flex;
+    padding: 0 14px;
+    border-bottom: 1px solid #e7e9f1;
+    background: #f8f9fc;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.xiaogu-settings-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.xiaogu-settings-tab {
+    position: relative;
+    min-width: max-content;
+    padding: 14px 16px 13px;
+    border: 0;
+    background: transparent;
+    color: #747b91;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.xiaogu-settings-tab::after {
+    position: absolute;
+    right: 14px;
+    bottom: -1px;
+    left: 14px;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: #467bba;
+    content: "";
+    opacity: 0;
+    transform: scaleX(.45);
+    transition: opacity 160ms ease, transform 180ms ease;
+}
+
+.xiaogu-settings-tab:hover {
+    color: #467bba;
+}
+
+.xiaogu-settings-tab.is-active {
+    color: #2f5685;
+}
+
+.xiaogu-settings-tab.is-active::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+.xiaogu-settings-tab:focus-visible {
+    outline: 2px solid rgba(70, 123, 186, .35);
+    outline-offset: -3px;
+}
+
+.xiaogu-settings-pane {
+    padding: 22px 24px 8px;
+    animation: xiaogu-settings-pane-in 180ms ease both;
+}
+
+.xiaogu-settings-pane[hidden] {
+    display: none;
+}
+
+.xiaogu-settings-pane > .typecho-option:first-child,
+.xiaogu-settings-pane > .xiaogu-friend-review:first-child {
+    margin-top: 0;
+}
+
+.xiaogu-settings-pane .xiaogu-friend-review {
+    margin-bottom: 24px;
+}
+
+.xiaogu-settings-pane .typecho-option {
+    padding-right: 0;
+    padding-left: 0;
+}
+
+@keyframes xiaogu-settings-pane-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 620px) {
+    .xiaogu-settings-tabs {
+        padding: 0 6px;
+    }
+
+    .xiaogu-settings-tab {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .xiaogu-settings-pane {
+        padding: 18px 14px 6px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .xiaogu-settings-pane {
+        animation: none;
+    }
+
+    .xiaogu-settings-tab::after {
+        transition: none;
+    }
+}

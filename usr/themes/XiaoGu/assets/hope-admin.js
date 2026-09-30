@@ -7,6 +7,8 @@
     if (!source) return;
 
     source.classList.add('xiaogu-hope-source');
+    var sourceOption = source.closest('.typecho-option');
+    if (sourceOption) sourceOption.classList.add('xiaogu-hope-option');
     var games = parseGames(source.value);
     var panel = document.createElement('section');
     panel.className = 'xiaogu-hope-admin';

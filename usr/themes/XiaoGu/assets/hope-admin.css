@@ -2,12 +2,18 @@
     display: none !important;
 }
 
+.xiaogu-hope-option > .typecho-label,
+.xiaogu-hope-option > .description {
+    display: none;
+}
+
 .xiaogu-hope-admin {
     margin-top: 12px;
     padding: 16px;
     border: 1px solid #e4e7f1;
     border-radius: 9px;
     background: #fafbff;
+    container-type: inline-size;
 }
 
 .xiaogu-hope-admin__heading,
@@ -42,9 +48,17 @@
     border: 1px solid #e5e8f1;
     border-radius: 8px;
     background: #fff;
-    grid-template-columns: 105px minmax(130px, 1fr) 36px minmax(130px, 1fr) 145px 105px;
+    grid-template-columns: 88px minmax(0, 1fr) 36px minmax(0, 1fr);
     gap: 10px;
     align-items: end;
+}
+
+.xiaogu-hope-admin__form > .xiaogu-hope-field:nth-child(5) {
+    grid-column: 1 / 3;
+}
+
+.xiaogu-hope-admin__form > .xiaogu-hope-field:nth-child(6) {
+    grid-column: 3 / 5;
 }
 
 .xiaogu-hope-field {
@@ -61,8 +75,10 @@
 .xiaogu-hope-field select,
 .xiaogu-hope-field input {
     width: 100%;
+    min-width: 0;
     height: 34px;
     margin: 0;
+    box-sizing: border-box;
 }
 
 .xiaogu-hope-team-select {
@@ -160,9 +176,18 @@
     text-align: center;
 }
 
-@media (max-width: 960px) {
+@container (max-width: 520px) {
     .xiaogu-hope-admin__form {
-        grid-template-columns: 100px minmax(130px, 1fr) 36px minmax(130px, 1fr);
+        grid-template-columns: 1fr;
+    }
+
+    .xiaogu-hope-admin__form > .xiaogu-hope-field:nth-child(5),
+    .xiaogu-hope-admin__form > .xiaogu-hope-field:nth-child(6) {
+        grid-column: auto;
+    }
+
+    .xiaogu-hope-swap {
+        width: 100%;
     }
 }
 
