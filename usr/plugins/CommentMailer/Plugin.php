@@ -181,6 +181,269 @@ class Plugin implements PluginInterface
         }
     }
 
+    /**
+     * Send due basketball schedule reminders and return a compact run summary.
+     */
+    public static function processScheduleReminders(): array
+    {
+        $db = Db::get();
+        self::ensureScheduleReminderTable($db);
+
+        $rawSchedule = self::themeSchedule($db);
+        $timezone = self::siteTimezone($db);
+        $now = new \DateTimeImmutable('now', $timezone);
+        $candidates = self::scheduleReminderCandidates($rawSchedule, $now, $timezone);
+        $config = self::getConfig();
+        $options = Options::alloc();
+        $siteUrl = rtrim((string) $options->index, '/');
+        if ($siteUrl === '') {
+            $siteUrl = rtrim((string) $options->siteUrl, '/');
+        }
+
+        $summary = [
+            'checked' => count($candidates),
+            'sent' => 0,
+            'skipped' => 0,
+            'failed' => 0,
+        ];
+
+        foreach ($candidates as $game) {
+            if (!self::claimScheduleReminder($db, $game)) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            try {
+                $notice = self::scheduleNotificationDetails($game);
+                self::sendMail(
+                    $config,
+                    $config['adminEmail'],
+                    '[' . $config['senderName'] . '] ' . $notice['subject'],
+                    self::renderMail(
+                        $notice['heading'],
+                        $notice['summary'],
+                        $notice['sections'],
+                        $siteUrl,
+                        '查看我的盼头',
+                        false,
+                        '此邮件由网站赛程提醒系统自动发送。'
+                    ),
+                    null
+                );
+                self::markScheduleReminderSent($db, $game);
+                $summary['sent']++;
+            } catch (\Throwable $exception) {
+                self::releaseScheduleReminder($db, $game);
+                $summary['failed']++;
+                error_log('[CommentMailer] Schedule reminder failed: ' . $exception->getMessage());
+            }
+        }
+
+        self::cleanupScheduleReminders($db, $now);
+
+        return $summary;
+    }
+
+    private static function ensureScheduleReminderTable(Db $db): void
+    {
+        $prefix = $db->getPrefix();
+        if (!preg_match('/^[A-Za-z0-9_]*$/', $prefix)) {
+            throw new RuntimeException('数据库表前缀格式不正确。');
+        }
+
+        $table = '`' . $prefix . 'basketball_reminders`';
+        $db->query("CREATE TABLE IF NOT EXISTS {$table} (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `game_key` CHAR(64) NOT NULL,
+            `league` VARCHAR(16) NOT NULL,
+            `away_team` VARCHAR(64) NOT NULL,
+            `home_team` VARCHAR(64) NOT NULL,
+            `starts_at` DATETIME NOT NULL,
+            `lead_minutes` SMALLINT UNSIGNED NOT NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `sent_at` DATETIME NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uk_game_lead` (`game_key`, `lead_minutes`),
+            KEY `idx_starts_at` (`starts_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", Db::WRITE, '');
+    }
+
+    private static function themeSchedule(Db $db): string
+    {
+        $activeTheme = $db->fetchRow(
+            $db->select('value')->from('table.options')
+                ->where('name = ? AND user = ?', 'theme', 0)
+                ->limit(1)
+        );
+        $themeName = trim((string) ($activeTheme['value'] ?? ''));
+        if ($themeName === '') {
+            return '';
+        }
+
+        $themeOption = $db->fetchRow(
+            $db->select('value')->from('table.options')
+                ->where('name = ? AND user = ?', 'theme:' . $themeName, 0)
+                ->limit(1)
+        );
+        $settings = json_decode((string) ($themeOption['value'] ?? ''), true);
+
+        return is_array($settings) ? (string) ($settings['hopeGames'] ?? '') : '';
+    }
+
+    private static function siteTimezone(Db $db): \DateTimeZone
+    {
+        $timezoneOption = $db->fetchRow(
+            $db->select('value')->from('table.options')
+                ->where('name = ? AND user = ?', 'timezone', 0)
+                ->limit(1)
+        );
+        $offset = max(-43200, min(50400, (int) ($timezoneOption['value'] ?? 0)));
+        $sign = $offset < 0 ? '-' : '+';
+        $absolute = abs($offset);
+
+        return new \DateTimeZone(sprintf(
+            '%s%02d:%02d',
+            $sign,
+            intdiv($absolute, 3600),
+            intdiv($absolute % 3600, 60)
+        ));
+    }
+
+    private static function scheduleReminderCandidates(
+        string $rawSchedule,
+        \DateTimeImmutable $now,
+        \DateTimeZone $timezone
+    ): array {
+        $candidates = [];
+        $leadTimes = [1440, 60, 15];
+        $graceSeconds = 15 * 60;
+
+        foreach (preg_split('/\R/u', trim($rawSchedule)) ?: [] as $line) {
+            if (trim($line) === '') {
+                continue;
+            }
+            $parts = array_map('trim', explode('|', $line));
+            if (count($parts) < 6 || $parts[1] === '' || $parts[3] === '') {
+                continue;
+            }
+
+            $startsAtText = $parts[5];
+            $format = preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $startsAtText)
+                ? '!Y-m-d H:i:s'
+                : '!Y-m-d H:i';
+            $startsAt = \DateTimeImmutable::createFromFormat($format, $startsAtText, $timezone);
+            $errors = \DateTimeImmutable::getLastErrors();
+            if ($startsAt === false || ($errors !== false && ($errors['warning_count'] || $errors['error_count']))) {
+                continue;
+            }
+
+            $remainingSeconds = $startsAt->getTimestamp() - $now->getTimestamp();
+            if ($remainingSeconds <= 0) {
+                continue;
+            }
+
+            foreach ($leadTimes as $leadMinutes) {
+                $triggerSeconds = $leadMinutes * 60;
+                if ($remainingSeconds <= $triggerSeconds
+                    && $remainingSeconds > max(0, $triggerSeconds - $graceSeconds)) {
+                    $identity = implode('|', [
+                        strtoupper($parts[0] !== '' ? $parts[0] : '篮球'),
+                        $parts[1],
+                        $parts[3],
+                        $startsAt->format('Y-m-d H:i:s'),
+                    ]);
+                    $candidates[] = [
+                        'key' => hash('sha256', $identity),
+                        'league' => strtoupper($parts[0] !== '' ? $parts[0] : '篮球'),
+                        'away' => $parts[1],
+                        'home' => $parts[3],
+                        'startsAt' => $startsAt,
+                        'leadMinutes' => $leadMinutes,
+                    ];
+                    break;
+                }
+            }
+        }
+
+        return $candidates;
+    }
+
+    private static function claimScheduleReminder(Db $db, array $game): bool
+    {
+        $adapter = $db->getAdapter();
+        $prefix = $db->getPrefix();
+        $table = '`' . $prefix . 'basketball_reminders`';
+        $values = [
+            $adapter->quoteValue($game['key']),
+            $adapter->quoteValue($game['league']),
+            $adapter->quoteValue($game['away']),
+            $adapter->quoteValue($game['home']),
+            $adapter->quoteValue($game['startsAt']->format('Y-m-d H:i:s')),
+            (int) $game['leadMinutes'],
+        ];
+        $inserted = $db->query("INSERT IGNORE INTO {$table}
+            (`game_key`, `league`, `away_team`, `home_team`, `starts_at`, `lead_minutes`)
+            VALUES ({$values[0]}, {$values[1]}, {$values[2]}, {$values[3]}, {$values[4]}, {$values[5]})", Db::WRITE, '');
+
+        if (is_object($inserted) && method_exists($inserted, 'rowCount')) {
+            return $inserted->rowCount() > 0;
+        }
+
+        return is_int($inserted) && $inserted > 0;
+    }
+
+    private static function markScheduleReminderSent(Db $db, array $game): void
+    {
+        $db->query(
+            $db->update('table.basketball_reminders')
+                ->rows(['sent_at' => date('Y-m-d H:i:s')])
+                ->where('game_key = ? AND lead_minutes = ?', $game['key'], (int) $game['leadMinutes'])
+        );
+    }
+
+    private static function releaseScheduleReminder(Db $db, array $game): void
+    {
+        $db->query(
+            $db->delete('table.basketball_reminders')
+                ->where(
+                    'game_key = ? AND lead_minutes = ? AND sent_at IS NULL',
+                    $game['key'],
+                    (int) $game['leadMinutes']
+                )
+        );
+    }
+
+    private static function cleanupScheduleReminders(Db $db, \DateTimeImmutable $now): void
+    {
+        $cutoff = $now->modify('-30 days')->format('Y-m-d H:i:s');
+        $db->query(
+            $db->delete('table.basketball_reminders')->where('starts_at < ?', $cutoff)
+        );
+    }
+
+    private static function scheduleNotificationDetails(array $game): array
+    {
+        $leadLabels = [
+            1440 => '1 天',
+            60 => '1 小时',
+            15 => '15 分钟',
+        ];
+        $lead = $leadLabels[(int) $game['leadMinutes']] ?? ((int) $game['leadMinutes'] . ' 分钟');
+        $matchup = $game['away'] . '（客） vs ' . $game['home'] . '（主）';
+
+        return [
+            'subject' => $game['league'] . ' 赛程提醒（开赛前 ' . $lead . '）：'
+                . $game['away'] . ' vs ' . $game['home'],
+            'heading' => '你关注的比赛即将开始',
+            'summary' => '这是 ' . $game['league'] . ' 比赛的开赛前 ' . $lead . '提醒。',
+            'sections' => [
+                ['label' => '比赛对阵', 'content' => $matchup],
+                ['label' => '开赛时间', 'content' => $game['startsAt']->format('Y年m月d日 H:i')],
+                ['label' => '提醒时间', 'content' => '开赛前 ' . $lead],
+            ],
+        ];
+    }
+
     private static function getConfig(): array
     {
         $settings = Options::alloc()->plugin('CommentMailer');
@@ -230,6 +493,7 @@ class Plugin implements PluginInterface
         $commentText = self::plainText((string) $comment->text);
         $status = (string) $comment->status;
         $title = self::contentTitle($comment);
+        $contentSlug = trim((string) $comment->parentContent->slug);
         $siteTitle = $config['senderName'];
         $permalink = (string) $comment->permalink;
         $notifications = [];
@@ -239,20 +503,23 @@ class Plugin implements PluginInterface
         }
 
         if ($config['notifyAdmin'] && strcasecmp($authorEmail, $config['adminEmail']) !== 0) {
-            $subjectPrefix = $status === 'approved' ? '新评论' : '待审核评论';
+            $adminNotice = self::adminNotificationDetails(
+                $contentSlug,
+                $status,
+                $author,
+                $authorEmail,
+                $commentText,
+                $title
+            );
             $notifications[$config['adminEmail']] = [
                 'recipient' => $config['adminEmail'],
-                'subject' => '[' . $siteTitle . '] ' . $subjectPrefix . '：' . $title,
+                'subject' => '[' . $siteTitle . '] ' . $adminNotice['subject'],
                 'html' => self::renderMail(
-                    '收到一条新评论',
-                    $author . ' 评论了《' . $title . '》',
-                    [
-                        ['label' => '评论者', 'content' => $author],
-                        ['label' => '邮箱', 'content' => $authorEmail !== '' ? $authorEmail : '未填写'],
-                        ['label' => '评论内容', 'content' => $commentText],
-                    ],
+                    $adminNotice['heading'],
+                    $adminNotice['summary'],
+                    $adminNotice['sections'],
                     $permalink,
-                    '查看评论',
+                    $adminNotice['buttonText'],
                     $config['enableEmailReplies']
                 ),
                 'replyTo' => self::notificationReplyTo(
@@ -311,6 +578,93 @@ class Plugin implements PluginInterface
         ];
 
         return array_values($notifications);
+    }
+
+    private static function adminNotificationDetails(
+        string $contentSlug,
+        string $status,
+        string $author,
+        string $authorEmail,
+        string $commentText,
+        string $title
+    ): array {
+        $email = $authorEmail !== '' ? $authorEmail : '未填写';
+
+        if ($contentSlug === 'neighbors' && self::isFriendApplication($commentText)) {
+            $application = self::parseFriendApplication($commentText);
+            $siteName = $application['网站名称'] ?? $author;
+            $sections = [
+                ['label' => '申请站点', 'content' => $siteName],
+                ['label' => '网站地址', 'content' => $application['网站地址'] ?? '未填写'],
+                ['label' => '网站描述', 'content' => $application['网站描述'] ?? '未填写'],
+                ['label' => '联系邮箱', 'content' => $email],
+            ];
+            foreach (['头像地址', 'RSS 地址', '备注'] as $optionalLabel) {
+                if (!empty($application[$optionalLabel])) {
+                    $sections[] = ['label' => $optionalLabel, 'content' => $application[$optionalLabel]];
+                }
+            }
+
+            return [
+                'subject' => ($status === 'approved' ? '新友链申请' : '待审核友链申请') . '：' . $siteName,
+                'heading' => '收到一条新友链申请',
+                'summary' => $siteName . ' 申请加入友链列表',
+                'sections' => $sections,
+                'buttonText' => '查看友链申请',
+            ];
+        }
+
+        if ($contentSlug === 'guestbook') {
+            return [
+                'subject' => ($status === 'approved' ? '新留言' : '待审核留言') . '：' . $author,
+                'heading' => '收到一条新留言',
+                'summary' => $author . ' 在留言板留下了消息',
+                'sections' => [
+                    ['label' => '留言者', 'content' => $author],
+                    ['label' => '邮箱', 'content' => $email],
+                    ['label' => '留言内容', 'content' => $commentText],
+                ],
+                'buttonText' => '查看留言',
+            ];
+        }
+
+        return [
+            'subject' => ($status === 'approved' ? '新评论' : '待审核评论') . '：' . $title,
+            'heading' => '收到一条新评论',
+            'summary' => $author . ' 评论了《' . $title . '》',
+            'sections' => [
+                ['label' => '评论者', 'content' => $author],
+                ['label' => '邮箱', 'content' => $email],
+                ['label' => '评论内容', 'content' => $commentText],
+            ],
+            'buttonText' => '查看评论',
+        ];
+    }
+
+    private static function isFriendApplication(string $commentText): bool
+    {
+        $firstLine = strtok(str_replace(["\r\n", "\r"], "\n", $commentText), "\n");
+
+        return trim((string) $firstLine) === '友链申请';
+    }
+
+    private static function parseFriendApplication(string $commentText): array
+    {
+        $result = [];
+        $lines = preg_split('/\R/u', $commentText) ?: [];
+        foreach (array_slice($lines, 1) as $line) {
+            $parts = preg_split('/[：:]/u', trim((string) $line), 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+            $label = trim($parts[0]);
+            $value = trim($parts[1]);
+            if ($label !== '' && $value !== '') {
+                $result[$label] = $value;
+            }
+        }
+
+        return $result;
     }
 
     private static function contentTitle(Feedback $comment): string
@@ -760,7 +1114,8 @@ class Plugin implements PluginInterface
         array $sections,
         string $permalink,
         string $buttonText,
-        bool $emailReplyEnabled
+        bool $emailReplyEnabled,
+        string $footerText = ''
     ): string {
         $sectionHtml = '';
         foreach ($sections as $section) {
@@ -791,9 +1146,11 @@ class Plugin implements PluginInterface
             . '<p style="margin:0;color:#666d88;font-size:14px;line-height:1.7">' . self::escape($summary) . '</p>'
             . $sectionHtml . $button
             . '<p style="margin:26px 0 0;color:#aaaec0;font-size:12px;line-height:1.6">'
-            . ($emailReplyEnabled
-                ? '此邮件由网站评论系统自动发送，直接回复邮件即可发布到网站评论区。'
-                : '此邮件由网站评论系统自动发送。直接回复邮件只会发送给对方，不会同步到网站评论区。')
+            . ($footerText !== ''
+                ? self::escape($footerText)
+                : ($emailReplyEnabled
+                    ? '此邮件由网站评论系统自动发送，直接回复邮件即可发布到网站评论区。'
+                    : '此邮件由网站评论系统自动发送。直接回复邮件只会发送给对方，不会同步到网站评论区。'))
             . '</p></div></body></html>';
     }
 
