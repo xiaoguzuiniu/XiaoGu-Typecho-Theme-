@@ -66,7 +66,7 @@ function xiaoguBasketballEnsureTeams(\Typecho\Db $db): void
     }
     foreach ($cba as $index => $team) {
         $rows[] = ['CBA', $team[0], $team[1],
-            'https://image.cbaleague.com/cbaleague/teamlogo/300x300/' . $team[2] . '_300.png', $index + 1];
+            'https://img.gulook.site/xiaogu/team-logos/cba/' . $team[2] . '.png', $index + 1];
     }
 
     foreach ($rows as $row) {
