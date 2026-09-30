@@ -30,7 +30,6 @@ $hopeGames = getXiaoGuHopeGames((string) $this->options->hopeGames);
     <section class="sidebar-block hope-block" aria-label="我的盼头">
         <div class="hope-heading">
             <h2>我的盼头</h2>
-            <?php if (count($hopeGames) > 1): ?><span><?php echo count($hopeGames); ?> 场</span><?php endif; ?>
         </div>
         <?php if ($hopeGames): ?>
             <div class="hope-games" tabindex="0" aria-label="关注的篮球比赛">
@@ -163,6 +162,110 @@ $hopeGames = getXiaoGuHopeGames((string) $this->options->hopeGames);
 
 <script>
     (function () {
+        document.querySelectorAll('.hope-games').forEach(function (games) {
+            let startX = 0;
+            let startScrollLeft = 0;
+            let currentX = 0;
+            let dragging = false;
+            let animationFrame = 0;
+            const cards = Array.from(games.querySelectorAll('.hope-game'));
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            function updateCardMotion() {
+                const width = Math.max(games.clientWidth, 1);
+                cards.forEach(function (card, index) {
+                    const distance = Math.min(1, Math.abs(index - games.scrollLeft / width));
+                    card.style.opacity = String(1 - distance * .28);
+                    card.style.transform = 'scale(' + (1 - distance * .035) + ')';
+                });
+            }
+
+            function animateToPage(page) {
+                window.cancelAnimationFrame(animationFrame);
+                const maxPage = Math.max(0, cards.length - 1);
+                const targetPage = Math.max(0, Math.min(page, maxPage));
+                const from = games.scrollLeft;
+                const target = targetPage * games.clientWidth;
+                const distance = target - from;
+                const duration = reduceMotion ? 0 : 560;
+
+                if (!duration || Math.abs(distance) < 1) {
+                    games.scrollLeft = target;
+                    games.classList.remove('is-settling');
+                    updateCardMotion();
+                    return;
+                }
+
+                games.classList.add('is-settling');
+                const startedAt = performance.now();
+                function step(now) {
+                    const progress = Math.min(1, (now - startedAt) / duration);
+                    const eased = 1 - Math.pow(1 - progress, 4);
+                    games.scrollLeft = from + distance * eased;
+                    updateCardMotion();
+                    if (progress < 1) {
+                        animationFrame = window.requestAnimationFrame(step);
+                    } else {
+                        games.classList.remove('is-settling');
+                    }
+                }
+                animationFrame = window.requestAnimationFrame(step);
+            }
+
+            games.addEventListener('pointerdown', function (event) {
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
+                window.cancelAnimationFrame(animationFrame);
+                games.classList.remove('is-settling');
+                startX = event.clientX;
+                currentX = event.clientX;
+                startScrollLeft = games.scrollLeft;
+                dragging = true;
+                games.classList.add('is-dragging');
+                games.setPointerCapture(event.pointerId);
+            });
+
+            games.addEventListener('pointermove', function (event) {
+                if (!dragging) return;
+                currentX = event.clientX;
+                games.scrollLeft = startScrollLeft - (event.clientX - startX) * .7;
+                updateCardMotion();
+            });
+
+            function finishDrag(event) {
+                if (!dragging) return;
+                dragging = false;
+                games.classList.remove('is-dragging');
+                if (games.hasPointerCapture(event.pointerId)) {
+                    games.releasePointerCapture(event.pointerId);
+                }
+                const startPage = Math.round(startScrollLeft / Math.max(games.clientWidth, 1));
+                const dragDistance = startX - currentX;
+                const threshold = Math.min(72, games.clientWidth * .22);
+                const targetPage = Math.abs(dragDistance) < threshold
+                    ? startPage
+                    : startPage + (dragDistance > 0 ? 1 : -1);
+                animateToPage(targetPage);
+            }
+
+            games.addEventListener('pointerup', finishDrag);
+            games.addEventListener('pointercancel', finishDrag);
+            games.addEventListener('keydown', function (event) {
+                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                event.preventDefault();
+                const direction = event.key === 'ArrowRight' ? 1 : -1;
+                const currentPage = Math.round(games.scrollLeft / Math.max(games.clientWidth, 1));
+                animateToPage(currentPage + direction);
+            });
+
+            games.addEventListener('scroll', function () {
+                if (!dragging && !games.classList.contains('is-settling')) updateCardMotion();
+            }, {passive: true});
+            window.addEventListener('resize', function () {
+                animateToPage(Math.round(games.scrollLeft / Math.max(games.clientWidth, 1)));
+            });
+            updateCardMotion();
+        });
+
         document.querySelectorAll('.activity-calendar').forEach(function (calendar) {
             const tooltip = calendar.querySelector('.activity-tooltip');
             const heading = tooltip.querySelector('strong');

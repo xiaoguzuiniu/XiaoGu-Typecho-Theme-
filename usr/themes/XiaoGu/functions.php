@@ -705,7 +705,17 @@ function getXiaoGuHopeGames($raw)
     usort($games, static function ($a, $b) {
         return $a['timestamp'] <=> $b['timestamp'];
     });
-    return $games;
+
+    $featured = [];
+    foreach (['NBA', 'CBA'] as $league) {
+        foreach ($games as $game) {
+            if (strtoupper($game['league']) === $league) {
+                $featured[] = $game;
+                break;
+            }
+        }
+    }
+    return $featured;
 }
 
 function renderXiaoGuThemeImagePicker()

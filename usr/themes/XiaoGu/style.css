@@ -3106,10 +3106,12 @@ body.is-gallery-lightbox-open {
 
 .hope-block { margin-bottom: 32px; }
 .hope-heading { display: flex; align-items: center; justify-content: space-between; }
-.hope-heading > span { color: #a0a4bb; font-size: 10px; }
-.hope-games { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 10px; }
+.hope-games { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 10px; cursor: grab; touch-action: pan-y; user-select: none; }
+.hope-games.is-dragging { cursor: grabbing; }
+.hope-games.is-dragging,
+.hope-games.is-settling { scroll-snap-type: none; }
 .hope-games::-webkit-scrollbar { display: none; }
-.hope-game { display: grid; min-width: 100%; padding: 10px 8px; grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr); align-items: center; gap: 5px; scroll-snap-align: start; border: 1px solid rgba(91, 96, 139, .1); border-radius: 10px; background: transparent; }
+.hope-game { display: grid; min-width: 100%; padding: 10px 8px; grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr); align-items: center; gap: 5px; scroll-snap-align: start; border: 1px solid rgba(91, 96, 139, .1); border-radius: 10px; background: transparent; opacity: .72; transform: scale(.965); transform-origin: center; transition: opacity 180ms ease, transform 180ms ease; will-change: opacity, transform; }
 .hope-team { display: flex; min-width: 0; align-items: center; flex-direction: column; text-align: center; }
 .hope-team img, .hope-logo-fallback { width: 34px; height: 34px; margin-bottom: 4px; border-radius: 50%; object-fit: contain; }
 .hope-logo-fallback { display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-weight: 700; }
