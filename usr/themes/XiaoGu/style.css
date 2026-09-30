@@ -3216,11 +3216,21 @@ body.is-gallery-lightbox-open {
 }
 
 .health-metric:first-child {
+    display: grid;
+    width: max-content;
+    max-width: 100%;
     grid-column: 1;
+    justify-self: center;
+    justify-items: end;
 }
 
 .health-metric + .health-metric {
+    display: grid;
+    width: max-content;
+    max-width: 100%;
     grid-column: 3;
+    justify-self: center;
+    justify-items: end;
 }
 
 .health-metric-label {
