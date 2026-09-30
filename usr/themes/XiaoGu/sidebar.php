@@ -15,6 +15,7 @@ $healthSteps = $healthRecord ? (int) $healthRecord['steps'] : 0;
 $healthEnergy = $healthRecord ? (float) $healthRecord['active_energy'] : 0.0;
 $healthEnergyDisplay = rtrim(rtrim(number_format($healthEnergy, 2, '.', ','), '0'), '.');
 $healthSyncTime = $healthRecord ? substr((string) $healthRecord['update_time'], 0, 5) : '未同步';
+$hopeGames = getXiaoGuHopeGames((string) $this->options->hopeGames);
 ?>
 
 <aside class="site-sidebar" aria-label="站点侧边栏">
@@ -26,7 +27,44 @@ $healthSyncTime = $healthRecord ? substr((string) $healthRecord['update_time'], 
         <span class="weekday">星期<?php echo $weekdays[(int) date('w')]; ?></span>
     </section>
 
-    <div class="sidebar-reserved-space" aria-hidden="true"></div>
+    <section class="sidebar-block hope-block" aria-label="我的盼头">
+        <div class="hope-heading">
+            <h2>我的盼头</h2>
+            <?php if (count($hopeGames) > 1): ?><span><?php echo count($hopeGames); ?> 场</span><?php endif; ?>
+        </div>
+        <?php if ($hopeGames): ?>
+            <div class="hope-games" tabindex="0" aria-label="关注的篮球比赛">
+                <?php foreach ($hopeGames as $game): ?>
+                    <article class="hope-game">
+                        <div class="hope-team">
+                            <?php if ($game['awayLogo'] !== ''): ?>
+                                <img src="<?php echo htmlspecialchars($game['awayLogo'], ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy" decoding="async">
+                            <?php else: ?><span class="hope-logo-fallback" aria-hidden="true"><?php echo htmlspecialchars(mb_substr($game['away'], 0, 1), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+                            <strong><?php echo htmlspecialchars($game['away'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <small>客</small>
+                        </div>
+                        <div class="hope-game-time">
+                            <span><?php echo htmlspecialchars($game['league'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <time datetime="<?php echo htmlspecialchars($game['datetime'], ENT_QUOTES, 'UTF-8'); ?>">
+                                <small><?php echo date('m月d日', $game['timestamp']); ?></small>
+                                <strong><?php echo date('H:i', $game['timestamp']); ?></strong>
+                            </time>
+                            <em><?php echo htmlspecialchars($game['status'], ENT_QUOTES, 'UTF-8'); ?></em>
+                        </div>
+                        <div class="hope-team">
+                            <?php if ($game['homeLogo'] !== ''): ?>
+                                <img src="<?php echo htmlspecialchars($game['homeLogo'], ENT_QUOTES, 'UTF-8'); ?>" alt="" loading="lazy" decoding="async">
+                            <?php else: ?><span class="hope-logo-fallback" aria-hidden="true"><?php echo htmlspecialchars(mb_substr($game['home'], 0, 1), ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+                            <strong><?php echo htmlspecialchars($game['home'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <small>主场</small>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <div class="hope-empty">赛程尚未添加</div>
+        <?php endif; ?>
+    </section>
 
     <section class="sidebar-block health-summary" aria-label="今日健康数据">
         <div class="health-summary-head">

@@ -1,6 +1,8 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
+require_once __DIR__ . '/basketball.php';
+
 if (!defined('__TYPECHO_GRAVATAR_PREFIX__')) {
     define('__TYPECHO_GRAVATAR_PREFIX__', 'https://cravatar.cn/avatar/');
 }
@@ -606,6 +608,15 @@ function themeConfig($form)
     );
     $form->addInput($heroImageUrl->addRule('url', _t('请填写正确的头图 URL 地址')));
 
+    $hopeGames = new \Typecho\Widget\Helper\Form\Element\Textarea(
+        'hopeGames',
+        null,
+        null,
+        _t('我的盼头·比赛列表'),
+        _t('请使用下方的可视化赛程管理器，无需手工填写格式。')
+    );
+    $form->addInput($hopeGames);
+
     $friendSiteName = new \Typecho\Widget\Helper\Form\Element\Text(
         'friendSiteName',
         null,
@@ -661,6 +672,42 @@ function themeConfig($form)
     $form->addInput($friendLinks);
 }
 
+/**
+ * Parse the compact, admin-editable schedule used by the sidebar card.
+ */
+function getXiaoGuHopeGames($raw)
+{
+    $games = [];
+    $timezoneOffset = \Typecho\Date::$timezoneOffset - \Typecho\Date::$serverTimezoneOffset;
+    $now = \Typecho\Date::time() + $timezoneOffset;
+    $offsetSeconds = \Typecho\Date::$timezoneOffset;
+    $offsetSign = $offsetSeconds < 0 ? '-' : '+';
+    $offsetSeconds = abs($offsetSeconds);
+    $datetimeOffset = sprintf('%s%02d:%02d', $offsetSign, intdiv($offsetSeconds, 3600), intdiv($offsetSeconds % 3600, 60));
+    foreach (preg_split('/\R/u', trim((string) $raw)) as $line) {
+        if (trim($line) === '') continue;
+        $parts = array_map('trim', explode('|', $line));
+        if (count($parts) < 6) continue;
+
+        $timestamp = strtotime($parts[5]);
+        if ($timestamp === false || $timestamp < $now) continue;
+        $games[] = [
+            'league' => $parts[0] !== '' ? $parts[0] : '篮球',
+            'away' => $parts[1],
+            'awayLogo' => filter_var($parts[2], FILTER_VALIDATE_URL) ? $parts[2] : '',
+            'home' => $parts[3],
+            'homeLogo' => filter_var($parts[4], FILTER_VALIDATE_URL) ? $parts[4] : '',
+            'timestamp' => $timestamp,
+            'datetime' => date('Y-m-d\\TH:i:s', $timestamp) . $datetimeOffset,
+            'status' => date('Y-m-d', $timestamp) === date('Y-m-d', $now) ? '今日比赛' : '未开始',
+        ];
+    }
+    usort($games, static function ($a, $b) {
+        return $a['timestamp'] <=> $b['timestamp'];
+    });
+    return $games;
+}
+
 function renderXiaoGuThemeImagePicker()
 {
     $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
@@ -675,6 +722,14 @@ function renderXiaoGuThemeImagePicker()
     $db = \Typecho\Db::get();
     $options = \Widget\Options::alloc();
     $security = \Widget\Security::alloc();
+    $basketballTeams = [];
+    if ($isThemeOptions) {
+        try {
+            $basketballTeams = xiaoguBasketballTeams($db);
+        } catch (\Throwable $error) {
+            $basketballTeams = [];
+        }
+    }
 
     if ($isPageEditor) {
         $pageCid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
@@ -1269,6 +1324,18 @@ function renderXiaoGuThemeImagePicker()
             }
         }());
     </script>
+    <?php if ($isThemeOptions): ?>
+        <link rel="stylesheet"
+              href="<?php $options->themeUrl('assets/hope-admin.css?v=' . filemtime(__DIR__ . '/assets/hope-admin.css')); ?>">
+        <script>
+            window.XiaoGuHopeAdmin = <?php echo json_encode(
+                ['teams' => $basketballTeams],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+            ); ?>;
+        </script>
+        <script src="<?php $options->themeUrl('assets/hope-admin.js?v=' . filemtime(__DIR__ . '/assets/hope-admin.js')); ?>"></script>
+    <?php endif; ?>
     <?php
 }
 

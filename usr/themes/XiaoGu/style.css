@@ -3104,9 +3104,29 @@ body.is-gallery-lightbox-open {
     font-weight: 600;
 }
 
-.sidebar-reserved-space {
-    display: none;
-}
+.hope-block { margin-bottom: 32px; }
+.hope-heading { display: flex; align-items: center; justify-content: space-between; }
+.hope-heading h2 { margin-bottom: 9px; color: #676d91; }
+.hope-heading > span { color: #a0a4bb; font-size: 10px; }
+.hope-games { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 10px; }
+.hope-games::-webkit-scrollbar { display: none; }
+.hope-game { display: grid; min-width: 100%; padding: 10px 8px; grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr); align-items: center; gap: 5px; scroll-snap-align: start; border: 1px solid rgba(91, 96, 139, .1); border-radius: 10px; background: rgba(255,255,255,.56); }
+.hope-team { display: flex; min-width: 0; align-items: center; flex-direction: column; text-align: center; }
+.hope-team img, .hope-logo-fallback { width: 34px; height: 34px; margin-bottom: 4px; border-radius: 50%; object-fit: contain; }
+.hope-logo-fallback { display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+.hope-team strong { max-width: 100%; overflow: hidden; color: #303858; font-size: 12px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.hope-team small { color: #a0a4b8; font-size: 9px; }
+.hope-game-time { display: flex; min-width: 0; align-items: center; flex-direction: column; color: #7c819e; text-align: center; }
+.hope-game-time > span { padding: 1px 6px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 9px; font-weight: 700; }
+.hope-game-time time { display: flex; margin: 2px 0 1px; flex-direction: column; }
+.hope-game-time time small { font-size: 9px; }
+.hope-game-time time strong { color: #202545; font-size: 18px; line-height: 1.15; }
+.hope-game-time em { max-width: 72px; overflow: hidden; font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.hope-empty { display: grid; min-height: 92px; place-items: center; border: 1px dashed rgba(91,96,139,.18); border-radius: 10px; color: #a0a4bb; font-size: 11px; }
+
+[data-theme="dark"] .hope-game { border-color: rgba(255,255,255,.08); background: rgba(255,255,255,.025); }
+[data-theme="dark"] .hope-team strong,
+[data-theme="dark"] .hope-game-time time strong { color: #e1e4f0; }
 
 .date-card {
     position: relative;
@@ -3605,11 +3625,6 @@ button.activity-day:focus-visible {
         flex-direction: column;
         overflow: hidden;
         border-left: 1px solid var(--line);
-    }
-
-    .sidebar-reserved-space {
-        display: block;
-        flex: 0 0 clamp(76px, 10vh, 96px);
     }
 
     .page-column {
