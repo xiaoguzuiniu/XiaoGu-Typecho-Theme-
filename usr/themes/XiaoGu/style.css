@@ -3196,17 +3196,31 @@ body.is-gallery-lightbox-open {
 
 .health-metrics {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
     gap: 0;
+}
+
+.health-metrics::before {
+    width: 1px;
+    height: 100%;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    background: rgba(91, 96, 139, 0.12);
+    content: "";
 }
 
 .health-metric {
     min-width: 0;
 }
 
+.health-metric:first-child {
+    grid-column: 1;
+}
+
 .health-metric + .health-metric {
-    padding-left: 18px;
-    border-left: 1px solid rgba(91, 96, 139, 0.12);
+    grid-column: 3;
 }
 
 .health-metric-label {
@@ -4839,8 +4853,8 @@ html.is-theme-switching .hero-bio {
     color: #9298b0;
 }
 
-[data-theme="dark"] .health-metric + .health-metric {
-    border-color: rgba(183, 188, 212, 0.1);
+[data-theme="dark"] .health-metrics::before {
+    background: rgba(183, 188, 212, 0.1);
 }
 
 [data-theme="dark"] .activity-day,
