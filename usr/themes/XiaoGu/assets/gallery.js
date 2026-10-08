@@ -19,6 +19,10 @@
         return (value || '').replace(/\s+/g, ' ').trim();
     }
 
+    function displayTitle(value) {
+        return /\.(?:avif|gif|heic|heif|jpe?g|png|webp)$/i.test(value) ? '' : value;
+    }
+
     function photoMeta(image) {
         const owner = image.closest('[data-date], [data-location]');
         const date = cleanText(image.dataset.date || (owner && owner.dataset.date));
@@ -48,6 +52,7 @@
         const photo = {
             album: album,
             title: title,
+            displayTitle: displayTitle(title),
             meta: photoMeta(node),
             preview: preview,
             original: original,
@@ -93,22 +98,28 @@
         grid.replaceChildren();
         visiblePhotos.forEach(function (photo, index) {
             const item = document.createElement('button');
-            const caption = document.createElement('span');
-            const title = document.createElement('strong');
-            const meta = document.createElement('small');
 
             item.type = 'button';
             item.className = 'gallery-photo gallery-photo-pattern-' + (index % 8);
             item.dataset.galleryPhotoIndex = String(index);
-            item.setAttribute('aria-label', '查看照片：' + photo.title);
-            title.textContent = photo.title;
-            caption.className = 'gallery-photo-caption';
-            caption.appendChild(title);
-            if (photo.meta) {
-                meta.textContent = photo.meta;
-                caption.appendChild(meta);
+            item.setAttribute('aria-label', '查看照片：' + (photo.displayTitle || photo.album));
+            item.append(makeImage(photo));
+            if (photo.displayTitle || photo.meta) {
+                const caption = document.createElement('span');
+                caption.className = 'gallery-photo-caption';
+                item.classList.add('has-caption');
+                if (photo.displayTitle) {
+                    const title = document.createElement('strong');
+                    title.textContent = photo.displayTitle;
+                    caption.appendChild(title);
+                }
+                if (photo.meta) {
+                    const meta = document.createElement('small');
+                    meta.textContent = photo.meta;
+                    caption.appendChild(meta);
+                }
+                item.appendChild(caption);
             }
-            item.append(makeImage(photo), caption);
             grid.appendChild(item);
         });
         grid.hidden = false;
@@ -211,7 +222,8 @@
         const photo = visiblePhotos[activePhotoIndex];
         previewImage.src = photo.original;
         previewImage.alt = photo.alt;
-        previewTitle.textContent = photo.title;
+        previewTitle.textContent = photo.displayTitle;
+        previewTitle.hidden = !photo.displayTitle;
         previewMeta.textContent = photo.meta || photo.album;
         previewCounter.textContent = (activePhotoIndex + 1) + ' / ' + visiblePhotos.length;
         previousButton.hidden = activePhotoIndex === 0;
