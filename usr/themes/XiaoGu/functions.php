@@ -608,6 +608,15 @@ function themeConfig($form)
     );
     $form->addInput($heroImageUrl->addRule('url', _t('请填写正确的头图 URL 地址')));
 
+    $galleryAlbums = new \Typecho\Widget\Helper\Form\Element\Textarea(
+        'galleryAlbums',
+        null,
+        '生活片刻',
+        _t('相册分类'),
+        _t('请使用下方的可视化分类管理器维护相册分类。')
+    );
+    $form->addInput($galleryAlbums);
+
     $hopeGames = new \Typecho\Widget\Helper\Form\Element\Textarea(
         'hopeGames',
         null,
@@ -1348,10 +1357,30 @@ function renderXiaoGuThemeImagePicker()
               href="<?php $options->themeUrl('assets/friend-links-admin.css?v=' . filemtime(__DIR__ . '/assets/friend-links-admin.css')); ?>">
         <script src="<?php $options->themeUrl('assets/friend-links-admin.js?v=' . filemtime(__DIR__ . '/assets/friend-links-admin.js')); ?>"></script>
         <link rel="stylesheet"
+              href="<?php $options->themeUrl('assets/gallery-categories-admin.css?v=' . filemtime(__DIR__ . '/assets/gallery-categories-admin.css')); ?>">
+        <script src="<?php $options->themeUrl('assets/gallery-categories-admin.js?v=' . filemtime(__DIR__ . '/assets/gallery-categories-admin.js')); ?>"></script>
+        <link rel="stylesheet"
               href="<?php $options->themeUrl('assets/theme-settings-tabs.css?v=' . filemtime(__DIR__ . '/assets/theme-settings-tabs.css')); ?>">
         <script src="<?php $options->themeUrl('assets/theme-settings-tabs.js?v=' . filemtime(__DIR__ . '/assets/theme-settings-tabs.js')); ?>"></script>
     <?php endif; ?>
     <?php
+}
+
+/**
+ * Parse the configured gallery album names while preserving their order.
+ */
+function getXiaoGuGalleryAlbumNames($raw)
+{
+    $albums = [];
+    foreach (preg_split('/\R/u', trim((string) $raw)) ?: [] as $line) {
+        $name = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $line)), 0, 60);
+        if ($name === '' || in_array($name, $albums, true)) {
+            continue;
+        }
+        $albums[] = $name;
+    }
+
+    return $albums ?: ['生活片刻'];
 }
 
 /**
@@ -1376,6 +1405,7 @@ function renderXiaoGuGalleryAdmin($cid, $options, $security)
         'cid' => (int) $cid,
         'uploadUrl' => $uploadUrl,
         'maxUploadSize' => $maxUploadSize,
+        'albums' => getXiaoGuGalleryAlbumNames((string) $options->galleryAlbums),
     ];
     ?>
     <link rel="stylesheet"

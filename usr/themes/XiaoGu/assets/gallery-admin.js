@@ -9,6 +9,7 @@
     var toolbar = document.querySelector('.editor');
     var editArea = document.getElementById('wmd-editarea') || textarea.parentElement;
     var photos = parseMarkdown(textarea.value);
+    var configuredAlbums = normalizeAlbums(config.albums);
     var uploadCount = 0;
     var sourceMode = false;
 
@@ -20,7 +21,7 @@
         '  <button type="button" class="btn btn-s" data-gallery-source-toggle>源码编辑</button>',
         '</header>',
         '<div class="xiaogu-gallery-toolbar">',
-        '  <label><span>上传到</span><input type="text" data-gallery-album-input value="生活片刻" maxlength="60" placeholder="相册名称"></label>',
+        '  <label><span>上传到</span><select data-gallery-album-input aria-label="选择上传分类"></select></label>',
         '  <div class="xiaogu-gallery-upload-actions">',
         '    <button type="button" class="btn primary" data-gallery-pick>选择照片</button>',
         '    <button type="button" class="btn" data-gallery-camera>拍照</button>',
@@ -52,6 +53,39 @@
     var empty = panel.querySelector('[data-gallery-admin-empty]');
     var status = panel.querySelector('[data-gallery-status]');
     var sourceToggle = panel.querySelector('[data-gallery-source-toggle]');
+
+    function normalizeAlbums(values) {
+        var albums = [];
+        (Array.isArray(values) ? values : []).forEach(function (value) {
+            var name = cleanValue(value).slice(0, 60);
+            if (name && albums.indexOf(name) === -1) albums.push(name);
+        });
+        return albums.length ? albums : ['生活片刻'];
+    }
+
+    function availableAlbums(current) {
+        var albums = configuredAlbums.slice();
+        photos.forEach(function (photo) {
+            var name = cleanValue(photo.album);
+            if (name && albums.indexOf(name) === -1) albums.push(name);
+        });
+        current = cleanValue(current);
+        if (current && albums.indexOf(current) === -1) albums.push(current);
+        return albums.length ? albums : ['生活片刻'];
+    }
+
+    function fillAlbumSelect(select, current) {
+        var selected = cleanValue(current) || configuredAlbums[0] || '生活片刻';
+        select.replaceChildren();
+        availableAlbums(selected).forEach(function (album) {
+            var option = document.createElement('option');
+            option.value = album;
+            option.textContent = album;
+            select.appendChild(option);
+        });
+        select.value = selected;
+        if (!select.value && select.options.length) select.selectedIndex = 0;
+    }
 
     function parseMarkdown(markdown) {
         var references = {};
@@ -163,7 +197,7 @@
         var titleLabel = document.createElement('label');
         var titleInput = document.createElement('input');
         var albumLabel = document.createElement('label');
-        var cardAlbumInput = document.createElement('input');
+        var cardAlbumInput = document.createElement('select');
         var actions = document.createElement('div');
 
         card.className = 'xiaogu-gallery-item is-' + photo.state;
@@ -189,12 +223,9 @@
         titleLabel.appendChild(titleInput);
 
         albumLabel.innerHTML = '<span>所属相册</span>';
-        cardAlbumInput.type = 'text';
-        cardAlbumInput.value = photo.album;
-        cardAlbumInput.maxLength = 60;
-        cardAlbumInput.placeholder = '生活片刻';
+        fillAlbumSelect(cardAlbumInput, photo.album);
         cardAlbumInput.disabled = photo.state === 'uploading';
-        cardAlbumInput.addEventListener('input', function () {
+        cardAlbumInput.addEventListener('change', function () {
             photo.album = cardAlbumInput.value;
             serialize();
         });
@@ -231,6 +262,7 @@
     }
 
     function render() {
+        fillAlbumSelect(albumInput, albumInput.value);
         items.replaceChildren();
         photos.forEach(function (photo, index) {
             items.appendChild(createCard(photo, index));

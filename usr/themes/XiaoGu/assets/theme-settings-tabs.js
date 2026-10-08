@@ -16,6 +16,11 @@
             fields: ['profileName', 'profileSignature', 'profileAvatarUrl', 'heroImageUrl']
         },
         {
+            id: 'gallery',
+            label: '相册设置',
+            fields: ['galleryAlbums']
+        },
+        {
             id: 'hope',
             label: '我的盼头',
             fields: ['hopeGames']
