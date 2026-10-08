@@ -30,8 +30,10 @@ Typecho 1.3 评论邮件通知插件，使用网易 163 邮箱 SMTP 服务。
 
 ## 赛程提醒
 
-`.github/workflows/schedule-reminders.yml` 每 5 分钟通过生产环境 SSH 配置运行一次提醒检查。
-每场比赛的三个提醒节点会写入数据库防重表，重复执行不会重复发送；调度容差为 15 分钟。
+生产部署会运行 `scripts/install-schedule-cron.sh`，为部署用户安装每 5 分钟执行一次的
+服务器 `cron` 任务。任务直接调用 PHP CLI，并通过系统日志标签 `xiaogu-schedule-reminders`
+记录输出。每场比赛的三个提醒节点会写入数据库防重表，重复执行不会重复发送；调度容差为
+15 分钟。
 
 ## 邮件回复自动发布
 

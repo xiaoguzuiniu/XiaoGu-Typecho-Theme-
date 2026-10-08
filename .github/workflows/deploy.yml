@@ -73,4 +73,12 @@ jobs:
           set -euo pipefail
           ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "test -f /var/www/xiaoguyouqu/index.php && test -d /var/www/xiaoguyouqu/usr/uploads && php -l /var/www/xiaoguyouqu/index.php"
+            "test -f /var/www/xiaoguyouqu/index.php && test -d /var/www/xiaoguyouqu/usr/uploads && php -l /var/www/xiaoguyouqu/index.php && php /var/www/xiaoguyouqu/api/schedule-reminders.php"
+
+      - name: Install schedule reminder cron
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "sh /var/www/xiaoguyouqu/scripts/install-schedule-cron.sh"
