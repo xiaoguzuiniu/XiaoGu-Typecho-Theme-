@@ -326,6 +326,33 @@ if ($browserTitle === '') {
             render();
         }
 
+        function focusMomentFromHash() {
+            const match = window.location.hash.match(/^#moment-(\d+)$/);
+            if (!match) return false;
+
+            const target = document.getElementById('moment-' + match[1]);
+            if (!target || !postList.contains(target)) return false;
+
+            if (!desktop.matches) {
+                target.scrollIntoView({block: 'start'});
+                return true;
+            }
+
+            collapseTarget = maxCollapse;
+            collapseCurrent = maxCollapse;
+            render();
+
+            const listTop = postList.getBoundingClientRect().top;
+            const targetTop = target.getBoundingClientRect().top;
+            const nextScrollTop = Math.max(0, postList.scrollTop + targetTop - listTop - 18);
+            if (scrollController) {
+                scrollController.scrollTo(nextScrollTop, true);
+            } else {
+                postList.scrollTop = nextScrollTop;
+            }
+            return true;
+        }
+
         mainColumn.addEventListener('wheel', function (event) {
             if (!desktop.matches || event.ctrlKey) return;
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
@@ -378,7 +405,14 @@ if ($browserTitle === '') {
             desktop.addListener(measure);
         }
 
-        window.requestAnimationFrame(measure);
+        window.XiaoGuFocusMomentFromHash = focusMomentFromHash;
+        window.addEventListener('hashchange', function () {
+            window.requestAnimationFrame(focusMomentFromHash);
+        });
+        window.requestAnimationFrame(function () {
+            measure();
+            window.requestAnimationFrame(focusMomentFromHash);
+        });
     }());
 
     (function () {
