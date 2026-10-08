@@ -45,7 +45,7 @@
         const title = cleanText(node.alt || node.title || (figureCaption && figureCaption.textContent))
             || '生活片刻 ' + String(photos.length + 1).padStart(2, '0');
         const preview = node.currentSrc || node.src;
-        const original = link && link.href ? link.href : preview;
+        const original = cleanText(node.dataset.fullSrc) || (link && link.href ? link.href : preview);
 
         if (!preview) continue;
 
@@ -83,8 +83,14 @@
         image.alt = photo.alt;
         image.loading = 'lazy';
         image.decoding = 'async';
+        image.fetchPriority = 'low';
         if (photo.srcset) image.srcset = photo.srcset;
         if (photo.sizes) image.sizes = photo.sizes;
+        if (photo.preview !== photo.original) {
+            image.addEventListener('error', function () {
+                if (image.src !== photo.original) image.src = photo.original;
+            }, {once: true});
+        }
         return image;
     }
 

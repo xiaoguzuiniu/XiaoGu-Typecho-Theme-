@@ -2172,7 +2172,7 @@ body.is-image-lightbox-open {
     border: 0;
     border-radius: 11px;
     background: #e9eaf2;
-    cursor: zoom-in;
+    cursor: pointer;
     box-shadow: 0 8px 22px rgba(58, 61, 122, 0.07);
 }
 

@@ -1614,6 +1614,59 @@ function getXiaoGuMomentThumbnailUrl(string $url): string
 }
 
 /**
+ * 为相册列表输出七牛缩略图，原图地址保留给灯箱使用。
+ */
+function renderXiaoGuGallerySourceContent(string $content): string
+{
+    if (trim($content) === '' || stripos($content, '<img') === false || !class_exists('DOMDocument')) {
+        return $content;
+    }
+
+    $previousErrors = libxml_use_internal_errors(true);
+    $document = new \DOMDocument('1.0', 'UTF-8');
+    $wrapperId = 'xiaogu-gallery-source-root';
+    $loaded = $document->loadHTML(
+        '<?xml encoding="UTF-8" ?><div id="' . $wrapperId . '">' . $content . '</div>',
+        LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+    );
+    libxml_clear_errors();
+    libxml_use_internal_errors($previousErrors);
+
+    if (!$loaded) {
+        return $content;
+    }
+
+    $wrapper = $document->getElementById($wrapperId);
+    if (!$wrapper) {
+        return $content;
+    }
+
+    foreach ($wrapper->getElementsByTagName('img') as $image) {
+        $sourceUrl = trim((string) $image->getAttribute('src'));
+        if ($sourceUrl === '') {
+            continue;
+        }
+
+        $originalUrl = getXiaoGuQiniuDeliveryUrl($sourceUrl);
+        $thumbnailUrl = getXiaoGuMomentThumbnailUrl($originalUrl);
+        $image->setAttribute('src', $thumbnailUrl);
+        if ($thumbnailUrl !== $originalUrl) {
+            $image->setAttribute('data-full-src', $originalUrl);
+        }
+        $image->setAttribute('loading', 'lazy');
+        $image->setAttribute('decoding', 'async');
+        $image->setAttribute('fetchpriority', 'low');
+    }
+
+    $html = '';
+    foreach ($wrapper->childNodes as $child) {
+        $html .= (string) $document->saveHTML($child);
+    }
+
+    return $html !== '' ? $html : $content;
+}
+
+/**
  * 在服务端把朋友圈正文中的图片整理成九宫格，避免首屏加载后再由 JS 重排 DOM。
  */
 function renderXiaoGuMomentContent(string $content): string

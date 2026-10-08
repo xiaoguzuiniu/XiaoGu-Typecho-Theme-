@@ -59,7 +59,7 @@ if ($profileSignature === '') {
         <?php $this->need('topbar.php'); ?>
 
         <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php elseif ($isGallery): ?> gallery-layout<?php endif; ?>">
-            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>" data-damped-scroll>
+            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>"<?php if (!$isGallery): ?> data-damped-scroll<?php endif; ?>>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
                         <section class="post-detail-hero" aria-label="文章头图">
@@ -120,7 +120,12 @@ if ($profileSignature === '') {
                             </header>
 
                             <div class="gallery-source-content page-content" data-gallery-source hidden>
-                                <?php $this->content(); ?>
+                                <?php
+                                ob_start();
+                                $this->content();
+                                $gallerySourceContent = (string) ob_get_clean();
+                                echo renderXiaoGuGallerySourceContent($gallerySourceContent);
+                                ?>
                             </div>
 
                             <nav class="gallery-filters" aria-label="相册筛选" data-gallery-filters hidden></nav>
