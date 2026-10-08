@@ -142,7 +142,8 @@ $hopeGames = getXiaoGuHopeGames((string) $this->options->hopeGames);
                 <li>
                     <span><?php echo str_pad((string) $recentArticleNumber, 2, '0', STR_PAD_LEFT); ?></span>
                     <?php if ($recentDisplayMode === 'moment'): ?>
-                        <a class="recent-moment-title" href="<?php $recentPosts->permalink(); ?>"><?php
+                        <?php $recentMomentUrl = rtrim((string) $this->options->siteUrl, '/') . '/#moment-' . (int) $recentPosts->cid; ?>
+                        <a class="recent-moment-title" href="<?php echo htmlspecialchars($recentMomentUrl, ENT_QUOTES, 'UTF-8'); ?>"><?php
                             echo htmlspecialchars(
                                 getRecentMomentTitle((int) $recentPosts->cid),
                                 ENT_QUOTES,

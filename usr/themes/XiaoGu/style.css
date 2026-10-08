@@ -954,6 +954,7 @@ a:hover {
 }
 
 .moment-card {
+    scroll-margin-block: 18px;
     padding: 26px 0 28px;
     border-bottom: 1px solid var(--line);
 }

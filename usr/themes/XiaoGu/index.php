@@ -123,7 +123,7 @@ if ($browserTitle === '') {
                                     'allowComment' => $this->allow('comment')
                                 ]
                             )->to($momentComments); ?>
-                            <article class="moment-card">
+                            <article class="moment-card" id="moment-<?php $this->cid(); ?>">
                                 <header class="moment-header">
                                     <?php if ($profileAvatarUrl !== ''): ?>
                                         <img class="moment-avatar"
