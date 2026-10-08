@@ -331,7 +331,13 @@ if ($browserTitle === '') {
             if (!momentId || !/^\d+$/.test(momentId)) return false;
 
             const target = document.getElementById('moment-' + momentId);
-            if (!target || !postList.contains(target)) return false;
+            if (!target || !postList.contains(target)) {
+                if (window.XiaoGuInfiniteScroll
+                    && typeof window.XiaoGuInfiniteScroll.loadUntilMoment === 'function') {
+                    window.XiaoGuInfiniteScroll.loadUntilMoment(momentId);
+                }
+                return false;
+            }
 
             if (!desktop.matches) {
                 target.scrollIntoView({block: 'start'});
@@ -637,6 +643,7 @@ if ($browserTitle === '') {
         let statusText = null;
         let observer = null;
         let loading = false;
+        let momentLoadPromise = null;
         let generation = 0;
 
         if (!postList) return;
@@ -704,6 +711,53 @@ if ($browserTitle === '') {
             }
         }
 
+        function waitForCurrentLoad() {
+            return new Promise(function (resolve) {
+                let attempts = 0;
+                function check() {
+                    if (!loading || attempts >= 100) {
+                        resolve();
+                        return;
+                    }
+                    attempts += 1;
+                    window.setTimeout(check, 50);
+                }
+                check();
+            });
+        }
+
+        function loadUntilMoment(momentId) {
+            if (momentLoadPromise) return momentLoadPromise;
+
+            momentLoadPromise = (async function () {
+                let pagesLoaded = 0;
+                while (!document.getElementById('moment-' + momentId) && nextLink() && pagesLoaded < 20) {
+                    await waitForCurrentLoad();
+                    if (document.getElementById('moment-' + momentId) || !nextLink()) break;
+
+                    const previousNextUrl = nextLink().href;
+                    await loadNextPage();
+                    pagesLoaded += 1;
+
+                    if (!document.getElementById('moment-' + momentId)
+                        && nextLink() && nextLink().href === previousNextUrl) {
+                        break;
+                    }
+                }
+
+                if (document.getElementById('moment-' + momentId)
+                    && typeof window.XiaoGuFocusRequestedMoment === 'function') {
+                    window.XiaoGuFocusRequestedMoment();
+                    return true;
+                }
+                return false;
+            }()).finally(function () {
+                momentLoadPromise = null;
+            });
+
+            return momentLoadPromise;
+        }
+
         function observeEndMarker() {
             if (observer) observer.disconnect();
             if (!nextLink()) {
@@ -754,7 +808,10 @@ if ($browserTitle === '') {
             desktop.addListener(reset);
         }
 
-        window.XiaoGuInfiniteScroll = { reset: reset };
+        window.XiaoGuInfiniteScroll = {
+            reset: reset,
+            loadUntilMoment: loadUntilMoment
+        };
         reset();
     }());
 
