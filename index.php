@@ -16,6 +16,10 @@ if (is_string($requestPath) && rtrim($requestPath, '/') === '/api/moments') {
     require __DIR__ . '/api/moments.php';
     exit;
 }
+if (is_string($requestPath) && rtrim($requestPath, '/') === '/api/gallery') {
+    require __DIR__ . '/api/gallery.php';
+    exit;
+}
 
 /** 载入配置支持 */
 if (!defined('__TYPECHO_ROOT_DIR__') && !@include_once 'config.inc.php') {

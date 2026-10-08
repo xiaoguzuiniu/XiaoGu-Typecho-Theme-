@@ -4,6 +4,8 @@
     var source = document.querySelector('textarea[name="galleryAlbums"]');
     if (!source) return;
 
+    var tokenInput = document.querySelector('input[name="galleryApiToken"]');
+
     var categories = parse(source.value);
     if (!categories.length) categories = ['生活片刻'];
 
@@ -27,6 +29,55 @@
         '<p class="xiaogu-gallery-category-note">删除分类不会修改已发布照片；旧分类仍会在相册编辑页保留。</p>'
     ].join('');
     source.insertAdjacentElement('afterend', manager);
+
+    if (tokenInput) {
+        var tokenTools = document.createElement('div');
+        tokenTools.className = 'xiaogu-gallery-token-tools';
+        var generateToken = document.createElement('button');
+        var copyToken = document.createElement('button');
+        var tokenStatus = document.createElement('span');
+        generateToken.type = 'button';
+        generateToken.className = 'btn';
+        generateToken.textContent = '生成安全密钥';
+        copyToken.type = 'button';
+        copyToken.className = 'btn';
+        copyToken.textContent = '复制密钥';
+        tokenStatus.setAttribute('role', 'status');
+        tokenTools.append(generateToken, copyToken, tokenStatus);
+        tokenInput.insertAdjacentElement('afterend', tokenTools);
+
+        generateToken.addEventListener('click', function () {
+            if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+                tokenStatus.textContent = '当前浏览器不支持安全随机数，请手动填写。';
+                return;
+            }
+            var bytes = new Uint8Array(24);
+            window.crypto.getRandomValues(bytes);
+            tokenInput.value = Array.from(bytes).map(function (value) {
+                return value.toString(16).padStart(2, '0');
+            }).join('');
+            tokenInput.dispatchEvent(new Event('change', {bubbles: true}));
+            tokenStatus.textContent = '已生成，请保存设置。';
+        });
+
+        copyToken.addEventListener('click', function () {
+            var value = tokenInput.value.trim();
+            if (!value) {
+                tokenStatus.textContent = '请先生成或填写密钥。';
+                return;
+            }
+            var copied = navigator.clipboard && window.isSecureContext
+                ? navigator.clipboard.writeText(value)
+                : Promise.reject(new Error('clipboard unavailable'));
+            copied.then(function () {
+                tokenStatus.textContent = '密钥已复制。';
+            }).catch(function () {
+                tokenInput.focus();
+                tokenInput.select();
+                tokenStatus.textContent = '请长按或使用快捷键复制。';
+            });
+        });
+    }
 
     var list = manager.querySelector('[data-gallery-category-list]');
     var count = manager.querySelector('[data-gallery-category-count]');

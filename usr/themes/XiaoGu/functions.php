@@ -617,6 +617,15 @@ function themeConfig($form)
     );
     $form->addInput($galleryAlbums);
 
+    $galleryApiToken = new \Typecho\Widget\Helper\Form\Element\Text(
+        'galleryApiToken',
+        null,
+        null,
+        _t('iOS 快捷指令密钥'),
+        _t('用于保护手机相册上传接口。建议点击下方按钮生成，保存后再复制到快捷指令。')
+    );
+    $form->addInput($galleryApiToken);
+
     $hopeGames = new \Typecho\Widget\Helper\Form\Element\Textarea(
         'hopeGames',
         null,

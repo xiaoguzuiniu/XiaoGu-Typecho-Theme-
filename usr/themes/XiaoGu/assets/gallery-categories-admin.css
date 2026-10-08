@@ -92,6 +92,19 @@
     line-height: 1.6;
 }
 
+.xiaogu-gallery-token-tools {
+    display: flex;
+    margin-top: 8px;
+    gap: 7px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.xiaogu-gallery-token-tools span {
+    color: #8b91a3;
+    font-size: 12px;
+}
+
 @media (max-width: 560px) {
     .xiaogu-gallery-category-add,
     .xiaogu-gallery-category-row {

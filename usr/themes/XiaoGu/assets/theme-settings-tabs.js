@@ -18,7 +18,7 @@
         {
             id: 'gallery',
             label: '相册设置',
-            fields: ['galleryAlbums']
+            fields: ['galleryAlbums', 'galleryApiToken']
         },
         {
             id: 'hope',
