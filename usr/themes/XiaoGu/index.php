@@ -326,11 +326,11 @@ if ($browserTitle === '') {
             render();
         }
 
-        function focusMomentFromHash() {
-            const match = window.location.hash.match(/^#moment-(\d+)$/);
-            if (!match) return false;
+        function focusRequestedMoment() {
+            const momentId = new URLSearchParams(window.location.search).get('moment');
+            if (!momentId || !/^\d+$/.test(momentId)) return false;
 
-            const target = document.getElementById('moment-' + match[1]);
+            const target = document.getElementById('moment-' + momentId);
             if (!target || !postList.contains(target)) return false;
 
             if (!desktop.matches) {
@@ -338,18 +338,13 @@ if ($browserTitle === '') {
                 return true;
             }
 
-            collapseTarget = maxCollapse;
-            collapseCurrent = maxCollapse;
-            render();
-
             const listTop = postList.getBoundingClientRect().top;
             const targetTop = target.getBoundingClientRect().top;
             const nextScrollTop = Math.max(0, postList.scrollTop + targetTop - listTop - 18);
             if (scrollController) {
-                scrollController.scrollTo(nextScrollTop, true);
-            } else {
-                postList.scrollTop = nextScrollTop;
+                scrollController.cancel();
             }
+            postList.scrollTop = nextScrollTop;
             return true;
         }
 
@@ -405,13 +400,10 @@ if ($browserTitle === '') {
             desktop.addListener(measure);
         }
 
-        window.XiaoGuFocusMomentFromHash = focusMomentFromHash;
-        window.addEventListener('hashchange', function () {
-            window.requestAnimationFrame(focusMomentFromHash);
-        });
+        window.XiaoGuFocusRequestedMoment = focusRequestedMoment;
         window.requestAnimationFrame(function () {
             measure();
-            window.requestAnimationFrame(focusMomentFromHash);
+            window.requestAnimationFrame(focusRequestedMoment);
         });
     }());
 
