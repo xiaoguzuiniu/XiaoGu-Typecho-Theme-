@@ -1,5 +1,5 @@
 (function () {
-    const imageSelector = '.moment-content img, .page-content img';
+    const imageSelector = '.moment-content img, .page-content img, .ledger-receipt img';
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const mobileViewport = window.matchMedia('(max-width: 640px)');
     let lightbox = null;
@@ -92,7 +92,7 @@
     }
 
     function collectImages(image) {
-        const scope = image.closest('.moment-content, .page-content');
+        const scope = image.closest('.moment-content, .page-content, .ledger-entry-grid');
         if (!scope) return [image];
         return Array.from(scope.querySelectorAll('img')).filter(function (item) {
             return Boolean(imageSource(item));

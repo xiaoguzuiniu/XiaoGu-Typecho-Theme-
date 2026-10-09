@@ -168,12 +168,15 @@ try {
     $pageUrl = \Typecho\Common::url($pagePath, (string) $options->siteUrl);
 
     if ($method === 'GET') {
-        $month = date('Y-m');
+        $month = xiaoguLedgerCurrentPeriodMonth();
+        $period = xiaoguLedgerPeriodRange($month);
         $budgets = xiaoguLedgerMonthlyBudgets((string) ($settings['ledgerMonthlyBudgets'] ?? ''));
         $defaultBudget = max(0, round((float) ($settings['ledgerDefaultBudget'] ?? 0), 2));
         ledgerApiRespond(200, 0, 'success', [
             'categories' => $categories,
             'current_month' => $month,
+            'period_start' => $period['start']->format('Y-m-d H:i:s'),
+            'period_end' => $period['end']->format('Y-m-d H:i:s'),
             'monthly_budget' => $budgets[$month] ?? $defaultBudget,
             'ledger_url' => $pageUrl,
         ]);
@@ -238,12 +241,13 @@ try {
 
     if ($transaction instanceof \PDO && $transaction->inTransaction()) $transaction->commit();
     $saved = true;
+    $entryPeriodMonth = xiaoguLedgerPeriodMonthForDate(new \DateTimeImmutable($spentAt));
     ledgerApiRespond(200, 0, '记账成功', [
         'id' => (int) $entryId,
         'amount' => number_format($amount, 2, '.', ''),
         'category' => $category,
         'spent_at' => $spentAt,
-        'ledger_url' => $pageUrl . (strpos($pageUrl, '?') === false ? '?' : '&') . 'month=' . substr($spentAt, 0, 7),
+        'ledger_url' => $pageUrl . (strpos($pageUrl, '?') === false ? '?' : '&') . 'month=' . $entryPeriodMonth,
     ]);
 } catch (\RuntimeException $error) {
     if ($transaction instanceof \PDO && $transaction->inTransaction()) $transaction->rollBack();
@@ -256,4 +260,3 @@ try {
     error_log('[ledger-api] ' . $error->getMessage());
     ledgerApiRespond(500, 500, '服务器处理账单失败');
 }
-

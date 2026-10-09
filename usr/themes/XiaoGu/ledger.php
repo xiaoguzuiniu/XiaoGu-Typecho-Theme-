@@ -74,7 +74,31 @@ function xiaoguLedgerBudgetForMonth($options, string $month): float
 function xiaoguLedgerNormalizeMonth(?string $month): string
 {
     $month = trim((string) $month);
-    return preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month) ? $month : date('Y-m');
+    return preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)
+        ? $month
+        : xiaoguLedgerCurrentPeriodMonth();
+}
+
+function xiaoguLedgerCurrentPeriodMonth(): string
+{
+    $today = new \DateTimeImmutable('today');
+    return xiaoguLedgerPeriodMonthForDate($today);
+}
+
+function xiaoguLedgerPeriodMonthForDate(\DateTimeInterface $date): string
+{
+    $periodDate = \DateTimeImmutable::createFromInterface($date);
+    if ((int) $periodDate->format('d') < 10) {
+        $periodDate = $periodDate->modify('first day of previous month');
+    }
+    return $periodDate->format('Y-m');
+}
+
+function xiaoguLedgerPeriodRange(string $month): array
+{
+    $start = new \DateTimeImmutable($month . '-10 00:00:00');
+    $end = $start->modify('+1 month');
+    return ['start' => $start, 'end' => $end];
 }
 
 function xiaoguLedgerMonthUrl(string $permalink, string $month): string
@@ -85,8 +109,9 @@ function xiaoguLedgerMonthUrl(string $permalink, string $month): string
 function xiaoguLedgerMonthEntries(\Typecho\Db $db, string $month): array
 {
     xiaoguLedgerEnsureTable($db);
-    $start = $month . '-01 00:00:00';
-    $next = (new \DateTimeImmutable($month . '-01'))->modify('+1 month')->format('Y-m-d H:i:s');
+    $range = xiaoguLedgerPeriodRange($month);
+    $start = $range['start']->format('Y-m-d H:i:s');
+    $next = $range['end']->format('Y-m-d H:i:s');
 
     return $db->fetchAll(
         $db->select('id', 'amount', 'category', 'spent_at', 'note', 'receipt_url')

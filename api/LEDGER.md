@@ -48,6 +48,6 @@
 
 - `GET /api/ledger`：返回消费类型、当月生活费和记账页面地址。
 - `POST /api/ledger`：上传一张消费照片并写入账单。
+- 每个账期从所选月份的 10 日 00:00 开始，到下月 10 日 00:00 前结束；1—9 日的账单归入上一个起始月份。
 - 单张照片最大 12MB，支持 JPEG、PNG、GIF、WebP、AVIF、HEIC 和 HEIF。
 - 所有请求必须携带 `Authorization: Bearer 密钥`。
-

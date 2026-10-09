@@ -632,7 +632,7 @@ function themeConfig($form)
         null,
         '2000',
         _t('默认每月生活费'),
-        _t('没有单独设置某个月份时使用，单位为元。')
+        _t('没有单独设置某个账期时使用，单位为元；每个账期从当月 10 日开始。')
     );
     $form->addInput($ledgerDefaultBudget->addRule('isFloat', _t('默认生活费必须是数字')));
 
@@ -640,8 +640,8 @@ function themeConfig($form)
         'ledgerMonthlyBudgets',
         null,
         null,
-        _t('每月生活费设置'),
-        _t('请使用下方的可视化管理器设置指定月份的生活费。')
+        _t('指定账期生活费'),
+        _t('请使用下方的可视化管理器设置；所选月份代表当月 10 日至下月 10 日前。')
     );
     $form->addInput($ledgerMonthlyBudgets);
 
@@ -1630,7 +1630,7 @@ function getXiaoGuQiniuDeliveryUrl(string $url): string
 /**
  * 为首页动态生成七牛缩略图地址，详情灯箱仍使用原始地址。
  */
-function getXiaoGuMomentThumbnailUrl(string $url): string
+function getXiaoGuMomentThumbnailUrl(string $url, int $maxSize = 800): string
 {
     $origin = getXiaoGuQiniuConfiguredOrigin();
     $configuredHost = strtolower((string) parse_url($origin, PHP_URL_HOST));
@@ -1647,9 +1647,10 @@ function getXiaoGuMomentThumbnailUrl(string $url): string
         $url = substr($url, 0, $fragmentPosition);
     }
 
+    $maxSize = max(80, min(1600, $maxSize));
     $separator = strpos($url, '?') === false ? '?' : '&';
     return $url . $separator
-        . 'imageMogr2/auto-orient/thumbnail/800x800>/strip/format/webp/quality/78/interlace/1'
+        . 'imageMogr2/auto-orient/thumbnail/' . $maxSize . 'x' . $maxSize . '>/strip/format/webp/quality/78/interlace/1'
         . $fragment;
 }
 

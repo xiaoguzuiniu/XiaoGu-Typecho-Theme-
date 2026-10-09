@@ -85,8 +85,18 @@
 }
 
 .ledger-month-nav strong {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
     font-size: 13px;
     font-weight: 600;
+}
+
+.ledger-month-nav strong small {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 8px;
+    font-weight: 400;
 }
 
 .ledger-summary-grid {
@@ -210,27 +220,28 @@
 
 .ledger-entry-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
 }
 
 .ledger-entry-card {
     display: grid;
     min-width: 0;
-    padding: 10px;
-    grid-template-columns: 94px minmax(0, 1fr);
-    gap: 13px;
+    padding: 7px;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 9px;
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 11px;
     background: var(--sidebar);
 }
 
 .ledger-receipt {
     display: block;
-    height: 86px;
+    height: 60px;
     overflow: hidden;
-    border-radius: 10px;
+    border-radius: 8px;
     background: #e9eaf2;
+    cursor: pointer;
 }
 
 .ledger-receipt img {
@@ -248,7 +259,7 @@
 .ledger-entry-copy {
     display: flex;
     min-width: 0;
-    padding: 4px 3px 3px 0;
+    padding: 1px 2px 1px 0;
     flex-direction: column;
 }
 
@@ -257,39 +268,39 @@
 }
 
 .ledger-entry-top span {
-    padding: 3px 7px;
+    padding: 2px 6px;
     border-radius: 999px;
     background: var(--primary-soft);
     color: var(--primary);
-    font-size: 9px;
+    font-size: 8px;
 }
 
 .ledger-entry-top strong {
     color: #e56962;
-    font-size: 14px;
+    font-size: 12px;
     white-space: nowrap;
 }
 
 .ledger-entry-copy p {
     display: -webkit-box;
-    margin: 9px 0 5px;
+    margin: 5px 0 3px;
     overflow: hidden;
     color: #565d7d;
-    font-size: 11px;
+    font-size: 9px;
     line-height: 1.55;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
 }
 
 .ledger-entry-copy time {
     margin-top: auto;
     color: #a0a4b8;
-    font-size: 9px;
+    font-size: 8px;
 }
 
 .ledger-empty {
     display: grid;
-    min-height: 230px;
+    min-height: 170px;
     padding: 30px;
     place-items: center;
     align-content: center;
@@ -355,7 +366,7 @@
     }
 
     .ledger-entry-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -368,11 +379,15 @@
         grid-template-columns: 1fr;
     }
 
+    .ledger-entry-grid {
+        grid-template-columns: 1fr;
+    }
+
     .ledger-entry-card {
-        grid-template-columns: 82px minmax(0, 1fr);
+        grid-template-columns: 58px minmax(0, 1fr);
     }
 
     .ledger-receipt {
-        height: 80px;
+        height: 56px;
     }
 }
