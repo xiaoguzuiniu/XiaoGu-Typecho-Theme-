@@ -19,6 +19,7 @@ $isGuestbook = $this->is('page', 'guestbook');
 $isNeighbors = !$isPost && $pageSlug === 'neighbors';
 $isAbout = !$isPost && $pageSlug === 'start-page';
 $isGallery = !$isPost && $pageSlug === 'gallery';
+$isLedger = !$isPost && $pageSlug === 'ledger';
 $bookPanelsOpen = $isPost && (int) $this->commentsNum > 0;
 
 $profileName = trim((string) $this->options->profileName);
@@ -48,6 +49,10 @@ if ($profileSignature === '') {
           href="<?php $this->options->themeUrl('assets/favicon.svg?v=' . filemtime(__DIR__ . '/assets/favicon.svg')); ?>">
     <link rel="stylesheet"
           href="<?php $this->options->themeUrl('style.css?v=' . filemtime(__DIR__ . '/style.css')); ?>">
+    <?php if ($isLedger): ?>
+        <link rel="stylesheet"
+              href="<?php $this->options->themeUrl('assets/ledger.css?v=' . filemtime(__DIR__ . '/assets/ledger.css')); ?>">
+    <?php endif; ?>
     <?php $this->header(); ?>
 </head>
 
@@ -58,8 +63,8 @@ if ($profileSignature === '') {
     <div class="site-shell">
         <?php $this->need('topbar.php'); ?>
 
-        <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php elseif ($isGallery): ?> gallery-layout<?php endif; ?>">
-            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>"<?php if (!$isGallery): ?> data-damped-scroll<?php endif; ?>>
+        <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php elseif ($isGallery): ?> gallery-layout<?php elseif ($isLedger): ?> ledger-layout<?php endif; ?>">
+            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>"<?php if (!$isGallery && !$isLedger): ?> data-damped-scroll<?php endif; ?>>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
                         <section class="post-detail-hero" aria-label="文章头图">
@@ -158,6 +163,8 @@ if ($profileSignature === '') {
                                 </figure>
                                 <button class="gallery-lightbox-nav gallery-lightbox-next" type="button" aria-label="下一张照片">›</button>
                             </div>
+                        <?php elseif ($isLedger): ?>
+                            <?php $this->need('ledger-view.php'); ?>
                         <?php elseif ($isAbout): ?>
                             <header class="about-hero">
                                 <h1><?php $this->title(); ?></h1>

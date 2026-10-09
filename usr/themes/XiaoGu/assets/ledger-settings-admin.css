@@ -1,0 +1,117 @@
+.xiaogu-ledger-source {
+    display: none !important;
+}
+
+.xiaogu-ledger-admin {
+    display: grid;
+    gap: 14px;
+    margin: 2px 0 18px;
+}
+
+.xiaogu-ledger-admin-card {
+    padding: 16px;
+    border: 1px solid #e3e6f1;
+    border-radius: 10px;
+    background: #fafbff;
+}
+
+.xiaogu-ledger-admin-heading,
+.xiaogu-ledger-add,
+.xiaogu-ledger-row,
+.xiaogu-ledger-token-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.xiaogu-ledger-admin-heading {
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.xiaogu-ledger-admin-heading h3,
+.xiaogu-ledger-admin-heading p {
+    margin: 0;
+}
+
+.xiaogu-ledger-admin-heading h3 {
+    font-size: 15px;
+}
+
+.xiaogu-ledger-admin-heading p,
+.xiaogu-ledger-admin-heading strong,
+.xiaogu-ledger-message,
+.xiaogu-ledger-token-tools span {
+    color: #8b91a3;
+    font-size: 12px;
+}
+
+.xiaogu-ledger-add {
+    margin-bottom: 10px;
+}
+
+.xiaogu-ledger-add input:first-child,
+.xiaogu-ledger-row input:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.xiaogu-ledger-budget-add input[type="month"] {
+    flex: 0 1 180px;
+}
+
+.xiaogu-ledger-budget-add input[type="number"] {
+    min-width: 100px;
+    flex: 1 1 auto;
+}
+
+.xiaogu-ledger-rows {
+    display: grid;
+    gap: 7px;
+}
+
+.xiaogu-ledger-row {
+    padding: 8px;
+    border: 1px solid #e7e9f3;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.xiaogu-ledger-budget-row {
+    display: grid;
+    grid-template-columns: minmax(90px, 1fr) minmax(100px, 1fr) auto;
+}
+
+.xiaogu-ledger-budget-row strong {
+    color: #4b5271;
+}
+
+.xiaogu-ledger-row .is-danger {
+    color: #d85f5f;
+}
+
+.xiaogu-ledger-message {
+    min-height: 18px;
+    margin: 0;
+}
+
+.xiaogu-ledger-message.is-error {
+    color: #d85f5f;
+}
+
+.xiaogu-ledger-token-tools {
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 620px) {
+    .xiaogu-ledger-add {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .xiaogu-ledger-budget-add input[type="month"] {
+        flex-basis: auto;
+    }
+}
+

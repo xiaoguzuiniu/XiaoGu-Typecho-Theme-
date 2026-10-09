@@ -2,6 +2,7 @@
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 require_once __DIR__ . '/basketball.php';
+require_once __DIR__ . '/ledger.php';
 
 if (!defined('__TYPECHO_GRAVATAR_PREFIX__')) {
     define('__TYPECHO_GRAVATAR_PREFIX__', 'https://cravatar.cn/avatar/');
@@ -625,6 +626,42 @@ function themeConfig($form)
         _t('用于保护手机相册上传接口。建议点击下方按钮生成，保存后再复制到快捷指令。')
     );
     $form->addInput($galleryApiToken);
+
+    $ledgerDefaultBudget = new \Typecho\Widget\Helper\Form\Element\Text(
+        'ledgerDefaultBudget',
+        null,
+        '2000',
+        _t('默认每月生活费'),
+        _t('没有单独设置某个月份时使用，单位为元。')
+    );
+    $form->addInput($ledgerDefaultBudget->addRule('isFloat', _t('默认生活费必须是数字')));
+
+    $ledgerMonthlyBudgets = new \Typecho\Widget\Helper\Form\Element\Textarea(
+        'ledgerMonthlyBudgets',
+        null,
+        null,
+        _t('每月生活费设置'),
+        _t('请使用下方的可视化管理器设置指定月份的生活费。')
+    );
+    $form->addInput($ledgerMonthlyBudgets);
+
+    $ledgerCategories = new \Typecho\Widget\Helper\Form\Element\Textarea(
+        'ledgerCategories',
+        null,
+        "餐饮\n交通\n购物\n娱乐\n居住\n医疗\n其他",
+        _t('消费类型'),
+        _t('请使用下方的可视化管理器维护快捷指令可选类型。')
+    );
+    $form->addInput($ledgerCategories);
+
+    $ledgerApiToken = new \Typecho\Widget\Helper\Form\Element\Text(
+        'ledgerApiToken',
+        null,
+        null,
+        _t('记账快捷指令密钥'),
+        _t('用于保护手机记账接口。生成并保存后复制到 iOS 快捷指令。')
+    );
+    $form->addInput($ledgerApiToken);
 
     $hopeGames = new \Typecho\Widget\Helper\Form\Element\Textarea(
         'hopeGames',
@@ -1368,6 +1405,9 @@ function renderXiaoGuThemeImagePicker()
         <link rel="stylesheet"
               href="<?php $options->themeUrl('assets/gallery-categories-admin.css?v=' . filemtime(__DIR__ . '/assets/gallery-categories-admin.css')); ?>">
         <script src="<?php $options->themeUrl('assets/gallery-categories-admin.js?v=' . filemtime(__DIR__ . '/assets/gallery-categories-admin.js')); ?>"></script>
+        <link rel="stylesheet"
+              href="<?php $options->themeUrl('assets/ledger-settings-admin.css?v=' . filemtime(__DIR__ . '/assets/ledger-settings-admin.css')); ?>">
+        <script src="<?php $options->themeUrl('assets/ledger-settings-admin.js?v=' . filemtime(__DIR__ . '/assets/ledger-settings-admin.js')); ?>"></script>
         <link rel="stylesheet"
               href="<?php $options->themeUrl('assets/theme-settings-tabs.css?v=' . filemtime(__DIR__ . '/assets/theme-settings-tabs.css')); ?>">
         <script src="<?php $options->themeUrl('assets/theme-settings-tabs.js?v=' . filemtime(__DIR__ . '/assets/theme-settings-tabs.js')); ?>"></script>

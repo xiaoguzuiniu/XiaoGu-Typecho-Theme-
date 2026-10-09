@@ -20,6 +20,10 @@ if (is_string($requestPath) && rtrim($requestPath, '/') === '/api/gallery') {
     require __DIR__ . '/api/gallery.php';
     exit;
 }
+if (is_string($requestPath) && rtrim($requestPath, '/') === '/api/ledger') {
+    require __DIR__ . '/api/ledger.php';
+    exit;
+}
 
 /** 载入配置支持 */
 if (!defined('__TYPECHO_ROOT_DIR__') && !@include_once 'config.inc.php') {

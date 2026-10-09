@@ -21,6 +21,14 @@
             fields: ['galleryAlbums', 'galleryApiToken']
         },
         {
+            id: 'ledger',
+            label: '记账设置',
+            fields: [
+                'ledgerDefaultBudget', 'ledgerMonthlyBudgets',
+                'ledgerCategories', 'ledgerApiToken'
+            ]
+        },
+        {
             id: 'hope',
             label: '我的盼头',
             fields: ['hopeGames']
