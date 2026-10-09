@@ -27,10 +27,9 @@ $ledgerPermalink = (string) $this->permalink;
 
 <section class="ledger-page">
     <header class="ledger-hero">
-        <div>
-            <span class="ledger-eyebrow">MONTHLY LEDGER</span>
+        <div class="ledger-hero-copy">
             <h1><?php $this->title(); ?></h1>
-            <p>认真记录每一笔，也安心过好每一天。</p>
+            <span>认真记录每一笔，也安心过好每一天。</span>
         </div>
         <nav class="ledger-month-nav" aria-label="切换账单月份">
             <a href="<?php echo htmlspecialchars(xiaoguLedgerMonthUrl($ledgerPermalink, $ledgerPreviousMonth), ENT_QUOTES, 'UTF-8'); ?>"
