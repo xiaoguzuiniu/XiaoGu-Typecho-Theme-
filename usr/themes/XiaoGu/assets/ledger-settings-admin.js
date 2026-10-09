@@ -41,6 +41,12 @@
     var categories = parseCategories(categoriesSource.value);
     var budgets = parseBudgets(budgetsSource.value);
 
+    function currentPeriodMonth() {
+        var date = new Date();
+        if (date.getDate() < 10) date.setMonth(date.getMonth() - 1);
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+    }
+
     var manager = document.createElement('section');
     manager.className = 'xiaogu-ledger-admin';
     manager.innerHTML = [
@@ -54,9 +60,15 @@
         '  <div class="xiaogu-ledger-add xiaogu-ledger-budget-add"><input type="month" data-ledger-budget-month><input type="number" min="0" step="0.01" placeholder="金额" data-ledger-budget-amount><button type="button" class="btn primary" data-ledger-budget-add>添加月份</button></div>',
         '  <div class="xiaogu-ledger-rows" data-ledger-budget-list></div>',
         '</section>',
+        '<section class="xiaogu-ledger-admin-card xiaogu-ledger-record-manager">',
+        '  <div class="xiaogu-ledger-admin-heading"><div><h3>账单记录</h3><p>按账期查看；删除时会同时清理 Typecho 附件和七牛云照片。</p></div><strong data-ledger-entry-count></strong></div>',
+        '  <div class="xiaogu-ledger-record-toolbar"><input type="month" data-ledger-entry-month><button type="button" class="btn" data-ledger-entry-refresh>查看账期</button></div>',
+        '  <p class="xiaogu-ledger-record-state" role="status" data-ledger-entry-state></p>',
+        '  <div class="xiaogu-ledger-record-list" data-ledger-entry-list></div>',
+        '</section>',
         '<p class="xiaogu-ledger-message" role="status" data-ledger-message></p>'
     ].join('');
-    budgetsSource.closest('.typecho-option').insertAdjacentElement('afterend', manager);
+    budgetsSource.insertAdjacentElement('afterend', manager);
 
     var categoryList = manager.querySelector('[data-ledger-category-list]');
     var categoryCount = manager.querySelector('[data-ledger-category-count]');
@@ -65,8 +77,15 @@
     var budgetCount = manager.querySelector('[data-ledger-budget-count]');
     var budgetMonth = manager.querySelector('[data-ledger-budget-month]');
     var budgetAmount = manager.querySelector('[data-ledger-budget-amount]');
+    var entryMonth = manager.querySelector('[data-ledger-entry-month]');
+    var entryRefresh = manager.querySelector('[data-ledger-entry-refresh]');
+    var entryCount = manager.querySelector('[data-ledger-entry-count]');
+    var entryState = manager.querySelector('[data-ledger-entry-state]');
+    var entryList = manager.querySelector('[data-ledger-entry-list]');
     var message = manager.querySelector('[data-ledger-message]');
-    budgetMonth.value = new Date().toISOString().slice(0, 7);
+    var defaultPeriodMonth = currentPeriodMonth();
+    budgetMonth.value = defaultPeriodMonth;
+    entryMonth.value = defaultPeriodMonth;
 
     function setMessage(value, error) {
         message.textContent = value || '';
@@ -93,6 +112,135 @@
         button.disabled = Boolean(disabled);
         button.addEventListener('click', handler);
         return button;
+    }
+
+    function ledgerApiUrl() {
+        var config = window.XiaoGuLedgerAdminConfig || {};
+        return String(config.apiUrl || '').trim();
+    }
+
+    function ledgerHeaders(withJson) {
+        var headers = {'Authorization': 'Bearer ' + (tokenInput ? tokenInput.value.trim() : '')};
+        if (withJson) headers['Content-Type'] = 'application/json';
+        return headers;
+    }
+
+    function apiError(response, body) {
+        if (body && body.message) return body.message;
+        return '请求失败（HTTP ' + response.status + '）';
+    }
+
+    function recordText(tag, value) {
+        var element = document.createElement(tag);
+        element.textContent = value;
+        return element;
+    }
+
+    function renderEntries(entries) {
+        entryList.replaceChildren();
+        entryCount.textContent = entries.length + ' 笔';
+        if (!entries.length) {
+            entryState.textContent = '这个账期还没有账单。';
+            return;
+        }
+        entryState.textContent = '';
+
+        entries.forEach(function (entry) {
+            var row = document.createElement('article');
+            var image = document.createElement('img');
+            var copy = document.createElement('div');
+            var heading = document.createElement('div');
+            var details = document.createElement('p');
+            var amount = recordText('strong', '− ¥' + Number(entry.amount || 0).toFixed(2));
+            var remove = document.createElement('button');
+            row.className = 'xiaogu-ledger-record';
+            image.src = entry.thumbnail_url || entry.receipt_url || '';
+            image.alt = '';
+            image.loading = 'lazy';
+            image.addEventListener('error', function () { image.classList.add('is-error'); }, {once: true});
+            copy.className = 'xiaogu-ledger-record-copy';
+            heading.append(recordText('strong', entry.category || '其他'), recordText('time', entry.spent_at || ''));
+            details.textContent = entry.note || '无备注';
+            copy.append(heading, details);
+            amount.className = 'xiaogu-ledger-record-amount';
+            remove.type = 'button';
+            remove.className = 'btn btn-s is-danger';
+            remove.textContent = '删除';
+            remove.addEventListener('click', function () { deleteEntry(entry, remove); });
+            row.append(image, copy, amount, remove);
+            entryList.appendChild(row);
+        });
+    }
+
+    function loadEntries() {
+        var token = tokenInput ? tokenInput.value.trim() : '';
+        var apiUrl = ledgerApiUrl();
+        if (!apiUrl) {
+            entryState.textContent = '记账接口地址不可用。';
+            entryState.classList.add('is-error');
+            return;
+        }
+        if (token.length < 24) {
+            entryCount.textContent = '';
+            entryList.replaceChildren();
+            entryState.textContent = '请先生成密钥并保存设置，再查看账单。';
+            entryState.classList.remove('is-error');
+            return;
+        }
+        entryRefresh.disabled = true;
+        entryState.classList.remove('is-error');
+        entryState.textContent = '正在读取账单…';
+        fetch(apiUrl + '?manage=1&month=' + encodeURIComponent(entryMonth.value), {
+            method: 'GET',
+            headers: ledgerHeaders(false),
+            credentials: 'same-origin',
+            cache: 'no-store'
+        }).then(function (response) {
+            return response.json().catch(function () { return null; }).then(function (body) {
+                if (!response.ok || !body || body.code !== 0) throw new Error(apiError(response, body));
+                return body;
+            });
+        }).then(function (body) {
+            renderEntries(Array.isArray(body.data.entries) ? body.data.entries : []);
+        }).catch(function (error) {
+            entryCount.textContent = '';
+            entryList.replaceChildren();
+            entryState.textContent = error.message || '账单读取失败。';
+            entryState.classList.add('is-error');
+        }).finally(function () {
+            entryRefresh.disabled = false;
+        });
+    }
+
+    function deleteEntry(entry, button) {
+        var prompt = '确定删除这笔账单吗？\n' + (entry.spent_at || '') + ' · '
+            + (entry.category || '其他') + ' · ¥' + Number(entry.amount || 0).toFixed(2)
+            + '\n照片也会从 Typecho 和七牛云中删除，此操作无法撤销。';
+        if (!window.confirm(prompt)) return;
+
+        button.disabled = true;
+        button.textContent = '删除中…';
+        entryState.classList.remove('is-error');
+        entryState.textContent = '正在删除账单和照片…';
+        fetch(ledgerApiUrl(), {
+            method: 'DELETE',
+            headers: ledgerHeaders(true),
+            credentials: 'same-origin',
+            body: JSON.stringify({id: entry.id})
+        }).then(function (response) {
+            return response.json().catch(function () { return null; }).then(function (body) {
+                if (!response.ok || !body || body.code !== 0) throw new Error(apiError(response, body));
+                return body;
+            });
+        }).then(function (body) {
+            entryState.textContent = body.message || '账单已删除。';
+            loadEntries();
+        }).catch(function (error) {
+            entryState.textContent = error.message || '账单删除失败。';
+            entryState.classList.add('is-error');
+            button.disabled = false;
+            button.textContent = '删除';
+        });
     }
 
     function renderCategories() {
@@ -147,13 +295,13 @@
                 }
                 budget.amount = Number(amount.value).toFixed(2);
                 syncBudgets();
-                setMessage('本月生活费已更新，记得保存设置。', false);
+                setMessage('本账期生活费已更新，记得保存设置。', false);
             });
             row.append(month, amount, removeButton(function () {
                 budgets.splice(index, 1);
                 syncBudgets();
                 renderBudgets();
-                setMessage('月份设置已删除，将改用默认生活费。', false);
+                setMessage('账期设置已删除，将改用默认生活费。', false);
             }));
             budgetList.appendChild(row);
         });
@@ -186,8 +334,11 @@
         budgetAmount.value = '';
         syncBudgets();
         renderBudgets();
-        setMessage('月份生活费已保存到表单，记得点击保存设置。', false);
+        setMessage('账期生活费已保存到表单，记得点击保存设置。', false);
     });
+
+    entryRefresh.addEventListener('click', loadEntries);
+    entryMonth.addEventListener('change', loadEntries);
 
     if (tokenInput) {
         var tools = document.createElement('div');
@@ -233,4 +384,5 @@
 
     renderCategories();
     renderBudgets();
+    loadEntries();
 }());

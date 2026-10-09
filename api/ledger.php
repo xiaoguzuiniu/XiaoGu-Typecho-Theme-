@@ -61,6 +61,13 @@ function ledgerApiRequireToken(array $settings): void
     }
 }
 
+function ledgerApiRequireAdministrator(): void
+{
+    if (!\Widget\User::alloc()->pass('administrator', true)) {
+        ledgerApiRespond(403, 403, '仅已登录的管理员可以管理账单');
+    }
+}
+
 function ledgerApiCategories(array $settings): array
 {
     return xiaoguLedgerCategories((string) ($settings['ledgerCategories'] ?? ''));
@@ -138,8 +145,8 @@ function ledgerApiDeleteUpload(?array $upload): void
 }
 
 $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
-if (!in_array($method, ['GET', 'POST'], true)) {
-    header('Allow: GET, POST');
+if (!in_array($method, ['GET', 'POST', 'DELETE'], true)) {
+    header('Allow: GET, POST, DELETE');
     ledgerApiRespond(405, 405, 'Method Not Allowed');
 }
 
@@ -168,18 +175,53 @@ try {
     $pageUrl = \Typecho\Common::url($pagePath, (string) $options->siteUrl);
 
     if ($method === 'GET') {
-        $month = xiaoguLedgerCurrentPeriodMonth();
+        $isManageRequest = isset($_GET['manage']) && (string) $_GET['manage'] === '1';
+        if ($isManageRequest) ledgerApiRequireAdministrator();
+        $month = $isManageRequest
+            ? xiaoguLedgerNormalizeMonth(isset($_GET['month']) ? (string) $_GET['month'] : null)
+            : xiaoguLedgerCurrentPeriodMonth();
         $period = xiaoguLedgerPeriodRange($month);
         $budgets = xiaoguLedgerMonthlyBudgets((string) ($settings['ledgerMonthlyBudgets'] ?? ''));
         $defaultBudget = max(0, round((float) ($settings['ledgerDefaultBudget'] ?? 0), 2));
-        ledgerApiRespond(200, 0, 'success', [
+        $responseData = [
             'categories' => $categories,
             'current_month' => $month,
             'period_start' => $period['start']->format('Y-m-d H:i:s'),
             'period_end' => $period['end']->format('Y-m-d H:i:s'),
             'monthly_budget' => $budgets[$month] ?? $defaultBudget,
             'ledger_url' => $pageUrl,
-        ]);
+        ];
+        if ($isManageRequest) {
+            $responseData['entries'] = array_map(static function (array $entry): array {
+                $receiptUrl = (string) $entry['receipt_url'];
+                if (function_exists('getXiaoGuQiniuDeliveryUrl')) {
+                    $receiptUrl = getXiaoGuQiniuDeliveryUrl($receiptUrl);
+                }
+                $thumbnailUrl = function_exists('getXiaoGuMomentThumbnailUrl')
+                    ? getXiaoGuMomentThumbnailUrl($receiptUrl, 240)
+                    : $receiptUrl;
+                return [
+                    'id' => (int) $entry['id'],
+                    'amount' => number_format((float) $entry['amount'], 2, '.', ''),
+                    'category' => (string) $entry['category'],
+                    'spent_at' => (string) $entry['spent_at'],
+                    'note' => (string) $entry['note'],
+                    'receipt_url' => $receiptUrl,
+                    'thumbnail_url' => $thumbnailUrl,
+                ];
+            }, xiaoguLedgerMonthEntries($db, $month));
+        }
+        ledgerApiRespond(200, 0, 'success', $responseData);
+    }
+
+    if ($method === 'DELETE') {
+        ledgerApiRequireAdministrator();
+        $payload = ledgerApiPayload();
+        $entryId = isset($payload['id']) && is_scalar($payload['id']) ? (int) $payload['id'] : 0;
+        if ($entryId <= 0) ledgerApiRespond(400, 400, '请选择要删除的账单');
+        $result = xiaoguLedgerDeleteEntry($db, $entryId, (int) $page['cid']);
+        $message = $result['attachment_deleted'] ? '账单和照片已删除' : '账单已删除';
+        ledgerApiRespond(200, 0, $message, $result);
     }
 
     $payload = ledgerApiPayload();

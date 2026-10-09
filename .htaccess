@@ -2,4 +2,4 @@ RewriteEngine On
 RewriteRule ^api/steps/?$ api/steps.php [L,QSA]
 RewriteRule ^api/moments/?$ api/moments.php [L,QSA]
 RewriteRule ^api/gallery/?$ api/gallery.php [L,QSA]
-RewriteRule ^api/ledger/?$ api/ledger.php [L,QSA]
+RewriteRule ^api/ledger/?$ index.php [L,QSA]

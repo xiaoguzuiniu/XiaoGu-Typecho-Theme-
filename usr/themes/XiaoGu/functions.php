@@ -1407,6 +1407,12 @@ function renderXiaoGuThemeImagePicker()
         <script src="<?php $options->themeUrl('assets/gallery-categories-admin.js?v=' . filemtime(__DIR__ . '/assets/gallery-categories-admin.js')); ?>"></script>
         <link rel="stylesheet"
               href="<?php $options->themeUrl('assets/ledger-settings-admin.css?v=' . filemtime(__DIR__ . '/assets/ledger-settings-admin.css')); ?>">
+        <script>
+            window.XiaoGuLedgerAdminConfig = <?php echo json_encode([
+                'apiUrl' => rtrim((string) $options->siteUrl, '/') . '/api/ledger',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        </script>
         <script src="<?php $options->themeUrl('assets/ledger-settings-admin.js?v=' . filemtime(__DIR__ . '/assets/ledger-settings-admin.js')); ?>"></script>
         <link rel="stylesheet"
               href="<?php $options->themeUrl('assets/theme-settings-tabs.css?v=' . filemtime(__DIR__ . '/assets/theme-settings-tabs.css')); ?>">

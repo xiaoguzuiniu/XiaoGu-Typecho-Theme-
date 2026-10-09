@@ -143,3 +143,66 @@ function xiaoguLedgerMonthSummary(array $entries, array $configuredCategories): 
         'categories' => $categoryTotals,
     ];
 }
+
+function xiaoguLedgerDeleteEntry(\Typecho\Db $db, int $entryId, int $ledgerPageCid): array
+{
+    xiaoguLedgerEnsureTable($db);
+    $entry = $db->fetchRow(
+        $db->select('id', 'amount', 'category', 'spent_at', 'note', 'receipt_url', 'attachment_cid')
+            ->from('table.ledger_entries')->where('id = ?', $entryId)->limit(1)
+    );
+    if (!$entry) {
+        throw new \RuntimeException('账单不存在或已经删除');
+    }
+
+    $attachmentCid = (int) ($entry['attachment_cid'] ?? 0);
+    $attachment = null;
+    $attachmentConfig = null;
+    if ($attachmentCid > 0) {
+        $attachment = $db->fetchRow(
+            $db->select('cid', 'text', 'parent')->from('table.contents')
+                ->where('cid = ? AND type = ?', $attachmentCid, 'attachment')->limit(1)
+        );
+        if (!$attachment) {
+            throw new \RuntimeException('找不到账单附件，已停止删除以避免遗留云端照片');
+        }
+        if ((int) $attachment['parent'] !== $ledgerPageCid) {
+            throw new \RuntimeException('账单附件归属异常，已停止删除');
+        }
+        $attachmentData = json_decode((string) $attachment['text'], true);
+        if (!is_array($attachmentData) || empty($attachmentData['path'])) {
+            throw new \RuntimeException('账单附件信息不完整，已停止删除');
+        }
+        $attachmentConfig = new \Typecho\Config($attachmentData);
+        $deleted = \Widget\Upload::deleteHandle([
+            'cid' => $attachmentCid,
+            'attachment' => $attachmentConfig,
+            'parent' => $ledgerPageCid,
+        ]);
+        if (!$deleted) {
+            throw new \RuntimeException('七牛云照片删除失败，账单未删除');
+        }
+    }
+
+    $transaction = $db->selectDb(\Typecho\Db::WRITE);
+    try {
+        if ($transaction instanceof \PDO) $transaction->beginTransaction();
+        $db->query($db->delete('table.ledger_entries')->where('id = ?', $entryId));
+        if ($attachment) {
+            $db->query($db->delete('table.relationships')->where('cid = ?', $attachmentCid));
+            $db->query($db->delete('table.fields')->where('cid = ?', $attachmentCid));
+            $db->query($db->delete('table.comments')->where('cid = ?', $attachmentCid));
+            $db->query($db->delete('table.contents')
+                ->where('cid = ? AND type = ?', $attachmentCid, 'attachment'));
+        }
+        if ($transaction instanceof \PDO && $transaction->inTransaction()) $transaction->commit();
+    } catch (\Throwable $error) {
+        if ($transaction instanceof \PDO && $transaction->inTransaction()) $transaction->rollBack();
+        throw new \RuntimeException('账单数据库记录删除失败', 0, $error);
+    }
+
+    return [
+        'id' => (int) $entry['id'],
+        'attachment_deleted' => (bool) $attachment,
+    ];
+}

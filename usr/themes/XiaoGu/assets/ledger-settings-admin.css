@@ -18,7 +18,8 @@
 .xiaogu-ledger-admin-heading,
 .xiaogu-ledger-add,
 .xiaogu-ledger-row,
-.xiaogu-ledger-token-tools {
+.xiaogu-ledger-token-tools,
+.xiaogu-ledger-record-toolbar {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -99,6 +100,89 @@
     color: #d85f5f;
 }
 
+.xiaogu-ledger-record-toolbar {
+    margin-bottom: 10px;
+}
+
+.xiaogu-ledger-record-toolbar input {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.xiaogu-ledger-record-state {
+    min-height: 18px;
+    margin: 0;
+    color: #8b91a3;
+    font-size: 12px;
+}
+
+.xiaogu-ledger-record-state.is-error {
+    color: #d85f5f;
+}
+
+.xiaogu-ledger-record-list {
+    display: grid;
+    gap: 7px;
+}
+
+.xiaogu-ledger-record {
+    display: grid;
+    align-items: center;
+    padding: 7px;
+    grid-template-columns: 50px minmax(0, 1fr) auto auto;
+    gap: 10px;
+    border: 1px solid #e7e9f3;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.xiaogu-ledger-record > img {
+    display: block;
+    width: 50px;
+    height: 44px;
+    border-radius: 6px;
+    background: #eef0f6;
+    object-fit: cover;
+}
+
+.xiaogu-ledger-record > img.is-error {
+    visibility: hidden;
+}
+
+.xiaogu-ledger-record-copy {
+    min-width: 0;
+}
+
+.xiaogu-ledger-record-copy > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.xiaogu-ledger-record-copy strong {
+    color: #4b5271;
+    font-size: 12px;
+}
+
+.xiaogu-ledger-record-copy time,
+.xiaogu-ledger-record-copy p {
+    overflow: hidden;
+    color: #8b91a3;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.xiaogu-ledger-record-copy p {
+    margin: 3px 0 0;
+}
+
+.xiaogu-ledger-record-amount {
+    color: #e56962;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 .xiaogu-ledger-token-tools {
     margin-top: 8px;
     flex-wrap: wrap;
@@ -113,5 +197,17 @@
     .xiaogu-ledger-budget-add input[type="month"] {
         flex-basis: auto;
     }
-}
 
+    .xiaogu-ledger-record {
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+    }
+
+    .xiaogu-ledger-record > img {
+        width: 44px;
+        height: 40px;
+    }
+
+    .xiaogu-ledger-record-amount {
+        grid-column: 2;
+    }
+}
