@@ -110,7 +110,6 @@ if ($browserTitle === '') {
 
                 <main class="post-list" aria-label="文章列表">
                     <?php while ($this->next()): ?>
-                        <?php recordPostView($this); ?>
                         <?php $displayMode = (string) $this->fields->displayMode; ?>
                         <?php if ($displayMode === 'moment'): ?>
                             <?php \Widget\Comments\Archive::allocWithAlias(
@@ -144,7 +143,7 @@ if ($browserTitle === '') {
 
                                 <footer class="moment-foot">
                                     <div class="moment-stats" aria-label="动态数据">
-                                        <span title="浏览量"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b><?php echo getPostViews($this); ?></b></span>
+                                        <span title="浏览量"><svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-view"></use></svg><b data-xiaogu-view-count="<?php $this->cid(); ?>"><?php echo getPostViews($this); ?></b></span>
                                         <span class="moment-comment-toggle" title="评论" data-moment-comment-toggle
                                               role="button" tabindex="0">
                                             <svg class="moment-stat-icon" aria-hidden="true"><use href="#moment-icon-comment"></use></svg>
@@ -476,10 +475,93 @@ if ($browserTitle === '') {
                     author.after(label);
                 });
             });
+
+            if (window.XiaoGuObserveMomentViews) {
+                window.XiaoGuObserveMomentViews(scope);
+            }
         }
 
         window.XiaoGuEnhanceMoments = enhanceMoments;
         enhanceMoments(document);
+    }());
+
+    (function () {
+        if (!('IntersectionObserver' in window) || !('fetch' in window)) return;
+
+        const siteUrl = <?php echo json_encode(rtrim($this->options->siteUrl, '/') . '/'); ?>;
+        const dwellTimers = new Map();
+        const observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                const card = entry.target;
+                const cid = card.id.replace(/^moment-/, '');
+
+                if (!entry.isIntersecting || entry.intersectionRatio < 0.25 || document.hidden) {
+                    if (dwellTimers.has(card)) {
+                        window.clearTimeout(dwellTimers.get(card));
+                        dwellTimers.delete(card);
+                    }
+                    return;
+                }
+
+                if (dwellTimers.has(card) || card.dataset.xiaoguViewRecorded === 'true') return;
+
+                dwellTimers.set(card, window.setTimeout(function () {
+                    dwellTimers.delete(card);
+                    if (!card.isConnected || document.hidden) {
+                        return;
+                    }
+                    card.dataset.xiaoguViewRecorded = 'true';
+                    observer.unobserve(card);
+
+                    window.fetch(siteUrl + '?xiaogu_action=view&cid=' + encodeURIComponent(cid), {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        keepalive: true
+                    })
+                        .then(function (response) {
+                            if (!response.ok) throw new Error('Unable to record view');
+                            return response.json();
+                        })
+                        .then(function (data) {
+                            if (!data.success) throw new Error(data.message || 'Unable to record view');
+                            document.querySelectorAll('[data-xiaogu-view-count="' + cid + '"]').forEach(function (count) {
+                                count.textContent = String(data.count);
+                            });
+                        })
+                        .catch(function () {
+                            delete card.dataset.xiaoguViewRecorded;
+                            observer.observe(card);
+                        });
+                }, 2000));
+            });
+        }, {
+            threshold: [0, 0.25]
+        });
+
+        function observeMomentViews(root) {
+            const scope = root || document;
+            scope.querySelectorAll('.moment-card:not([data-xiaogu-view-observed])').forEach(function (card) {
+                card.dataset.xiaoguViewObserved = 'true';
+                observer.observe(card);
+            });
+        }
+
+        window.XiaoGuObserveMomentViews = observeMomentViews;
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                dwellTimers.forEach(function (timer) {
+                    window.clearTimeout(timer);
+                });
+                dwellTimers.clear();
+                return;
+            }
+
+            document.querySelectorAll('.moment-card[data-xiaogu-view-observed]:not([data-xiaogu-view-recorded])').forEach(function (card) {
+                observer.unobserve(card);
+                observer.observe(card);
+            });
+        });
+        observeMomentViews(document);
     }());
 
     (function () {

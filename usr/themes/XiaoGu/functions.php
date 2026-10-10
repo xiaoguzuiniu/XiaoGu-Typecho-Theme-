@@ -289,15 +289,22 @@ function themeInit($archive)
         }
 
         if ($action === 'view') {
-            $cookieName = 'xiaogu_view_' . $cid;
-            if (empty($_COOKIE[$cookieName])) {
-                $row = $db->fetchRow($db->select('int_value')->from('table.fields')
-                    ->where('cid = ? AND name = ?', $cid, 'views'));
-                $count = $row ? intval($row['int_value']) : 0;
-                $count++;
-                saveIntField($db, $cid, 'views', $count);
-                setcookie($cookieName, '1', 0, '/');
+            if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+                throw new \Exception('浏览量请求方式错误');
             }
+
+            $post = $db->fetchRow(
+                $db->select('table.contents.cid', 'table.fields.str_value AS display_mode')
+                    ->from('table.contents')
+                    ->join('table.fields', 'table.fields.cid = table.contents.cid AND table.fields.name = \'displayMode\'', \Typecho\Db::LEFT_JOIN)
+                    ->where('table.contents.cid = ? AND table.contents.type = ? AND table.contents.status = ?', $cid, 'post', 'publish')
+                    ->limit(1)
+            );
+            if (!$post || (string) $post['display_mode'] !== 'moment') {
+                throw new \Exception('找不到要统计的朋友圈动态');
+            }
+
+            recordPostViewByCid($cid);
 
             $row = $db->fetchRow($db->select('int_value')->from('table.fields')
                 ->where('cid = ? AND name = ?', $cid, 'views'));
@@ -1998,7 +2005,76 @@ function saveIntField($db, int $cid, string $name, int $value)
 }
 
 /**
- * 记录文章浏览量（同一浏览器会话内每篇文章只计一次）。
+ * 判断当前请求是否允许计入浏览量。
+ */
+function shouldRecordXiaoGuView(): bool
+{
+    try {
+        if (\Widget\User::alloc()->pass('administrator', true)) {
+            return false;
+        }
+    } catch (\Exception $e) {
+        // 未登录访客继续按普通请求判断。
+    }
+
+    $purpose = strtolower((string) ($_SERVER['HTTP_SEC_PURPOSE'] ?? $_SERVER['HTTP_PURPOSE'] ?? ''));
+    if (strpos($purpose, 'prefetch') !== false || strpos($purpose, 'preview') !== false) {
+        return false;
+    }
+
+    $userAgent = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    if ($userAgent === '') {
+        return false;
+    }
+
+    return !preg_match(
+        '/bot|crawler|spider|slurp|bingpreview|facebookexternalhit|twitterbot|linkedinbot|bytespider|petalbot|headlesschrome|uptimerobot|monitor|curl|wget|python-requests|go-http-client|okhttp/i',
+        $userAgent
+    );
+}
+
+/**
+ * 为浏览量写入 24 小时去重 Cookie。
+ */
+function setXiaoGuViewCookie(int $cid): void
+{
+    $cookieName = 'xiaogu_view_' . $cid;
+    setcookie($cookieName, '1', [
+        'expires' => time() + 86400,
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    $_COOKIE[$cookieName] = '1';
+}
+
+/**
+ * 按文章 ID 记录浏览量，同一浏览器 24 小时内只计一次。
+ */
+function recordPostViewByCid(int $cid): bool
+{
+    if ($cid <= 0 || !shouldRecordXiaoGuView()) {
+        return false;
+    }
+
+    $cookieName = 'xiaogu_view_' . $cid;
+    if (!empty($_COOKIE[$cookieName])) {
+        return false;
+    }
+
+    $db = \Typecho\Db::get();
+    $current = $db->fetchRow($db->select('int_value')->from('table.fields')
+        ->where('cid = ? AND name = ?', $cid, 'views'));
+    $count = $current ? intval($current['int_value']) : 0;
+    saveIntField($db, $cid, 'views', $count + 1);
+    setXiaoGuViewCookie($cid);
+
+    return true;
+}
+
+/**
+ * 记录普通文章详情页浏览量。
  *
  * @param \Widget\Base\Contents $widget
  */
@@ -2009,19 +2085,8 @@ function recordPostView($widget)
         return;
     }
 
-    $cookieName = 'xiaogu_view_' . $cid;
-    if (!empty($_COOKIE[$cookieName])) {
-        return;
-    }
-
     try {
-        $db = \Typecho\Db::get();
-        $current = $db->fetchRow($db->select('int_value')->from('table.fields')
-            ->where('cid = ? AND name = ?', $cid, 'views'));
-        $count = $current ? intval($current['int_value']) : 0;
-        $count++;
-        saveIntField($db, $cid, 'views', $count);
-        setcookie($cookieName, '1', 0, '/');
+        recordPostViewByCid($cid);
     } catch (\Exception $e) {
         // 记录失败时不影响页面渲染
     }

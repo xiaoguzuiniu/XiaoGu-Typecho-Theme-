@@ -1,10 +1,6 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
-if ($this->is('post')) {
-    recordPostView($this);
-}
-
 $browserTitle = trim((string) $this->options->browserTitle);
 if ($browserTitle === '') {
     $browserTitle = (string) $this->options->title;
@@ -15,6 +11,9 @@ $pageSlug = (string) $this->slug;
 $isPost = $this->is('post');
 $displayMode = $isPost ? (string) $this->fields->displayMode : '';
 $isArticlePost = $isPost && $displayMode !== 'moment';
+if ($isArticlePost) {
+    recordPostView($this);
+}
 $isGuestbook = $this->is('page', 'guestbook');
 $isNeighbors = !$isPost && $pageSlug === 'neighbors';
 $isAbout = !$isPost && $pageSlug === 'start-page';
