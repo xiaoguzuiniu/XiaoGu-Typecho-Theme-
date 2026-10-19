@@ -353,6 +353,10 @@
         width: 100%;
     }
 
+    .ledger-month-nav strong small {
+        display: none;
+    }
+
     .ledger-hero-copy h1 {
         font-size: 23px;
     }
