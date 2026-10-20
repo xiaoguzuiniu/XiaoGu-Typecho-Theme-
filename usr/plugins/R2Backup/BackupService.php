@@ -18,8 +18,8 @@ final class BackupService
     public static function run(string $source = 'manual'): array
     {
         self::useSiteTimezone();
-        $lockPath = sys_get_temp_dir() . '/xiaogu-r2-backup.lock';
-        $lock = fopen($lockPath, 'c');
+        // 使用所有运行用户都可读取的插件文件作锁，避免 /tmp 中不同所有者创建的锁文件被系统拒绝打开。
+        $lock = fopen(__FILE__, 'rb');
         if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
             throw new RuntimeException('已有备份任务正在运行');
         }
