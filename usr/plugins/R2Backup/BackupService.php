@@ -142,6 +142,29 @@ final class BackupService
         return is_array($status) ? $status : [];
     }
 
+    public static function queueManual(): void
+    {
+        $status = self::status();
+        if (!empty($status['running']) && time() - (int) ($status['startedAt'] ?? 0) < 3600) {
+            throw new RuntimeException('已有备份任务正在运行');
+        }
+
+        self::saveStatus([
+            'running' => true,
+            'startedAt' => time(),
+            'message' => '备份正在后台执行',
+        ]);
+    }
+
+    public static function failManualStart(string $message): void
+    {
+        self::saveStatus([
+            'success' => false,
+            'message' => $message,
+            'finishedAt' => date(DATE_ATOM),
+        ]);
+    }
+
     private static function config(): array
     {
         $options = Options::alloc()->plugin('R2Backup');

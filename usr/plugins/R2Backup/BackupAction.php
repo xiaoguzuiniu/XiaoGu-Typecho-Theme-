@@ -14,18 +14,46 @@ final class BackupAction extends Options implements ActionInterface
     public function action()
     {
         header('Content-Type: application/json; charset=utf-8');
-        if (!$this->request->isPost()) {
-            $this->respond(405, ['success' => false, 'message' => '只允许 POST 请求']);
+        if (!$this->user->pass('administrator', true)) {
+            $this->respond(403, ['success' => false, 'message' => '请先以管理员身份登录']);
             return;
         }
 
         try {
-            $this->user->pass('administrator');
-            $this->security->protect();
-            @set_time_limit(0);
-            $this->respond(200, BackupService::run('admin'));
+            if (!$this->request->isPost()) {
+                $this->respond(200, ['success' => true, 'status' => BackupService::status()]);
+                return;
+            }
+
+            $token = (string) $this->request->get('_');
+            $expected = $this->security->getToken($this->request->getReferer());
+            if (!hash_equals($expected, $token)) {
+                $this->respond(403, ['success' => false, 'message' => '页面验证已过期，请刷新设置页后重试']);
+                return;
+            }
+
+            $php = PHP_BINDIR . '/php';
+            if (!function_exists('exec') || !is_file($php) || !is_executable($php)) {
+                throw new \RuntimeException('服务器无法启动 PHP 后台任务，请通过服务器 CLI 执行备份');
+            }
+
+            BackupService::queueManual();
+            $command = 'nohup ' . escapeshellarg($php) . ' '
+                . escapeshellarg(__DIR__ . '/cron.php') . ' manual > '
+                . escapeshellarg(sys_get_temp_dir() . '/xiaogu-r2-backup-manual.log')
+                . ' 2>&1 < /dev/null &';
+            $output = [];
+            $exitCode = 0;
+            exec($command, $output, $exitCode);
+            if ($exitCode !== 0) {
+                throw new \RuntimeException('无法启动备份进程（退出码 ' . $exitCode . '）');
+            }
+            $this->respond(202, ['success' => true, 'running' => true]);
         } catch (\Throwable $exception) {
             error_log('[R2Backup] ' . $exception->getMessage());
+            if (!empty($command)) {
+                BackupService::failManualStart($exception->getMessage());
+            }
             $this->respond(500, ['success' => false, 'message' => $exception->getMessage()]);
         }
     }

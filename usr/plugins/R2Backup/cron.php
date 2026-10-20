@@ -14,7 +14,8 @@ require_once __DIR__ . '/R2Client.php';
 require_once __DIR__ . '/BackupService.php';
 
 try {
-    $result = \TypechoPlugin\R2Backup\BackupService::run('cron');
+    $source = ($argv[1] ?? '') === 'manual' ? 'manual' : 'cron';
+    $result = \TypechoPlugin\R2Backup\BackupService::run($source);
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL;
     exit(0);
 } catch (\Throwable $exception) {

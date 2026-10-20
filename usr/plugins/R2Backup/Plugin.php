@@ -121,26 +121,75 @@ final class Plugin implements PluginInterface
             var form = document.querySelector('.typecho-page-main form');
             var button = document.getElementById('r2-backup-run');
             var state = document.getElementById('r2-backup-state');
+            var last = document.getElementById('r2-backup-last');
+            var endpoint = <?php echo json_encode($endpoint, JSON_UNESCAPED_SLASHES); ?>;
             if (panel && form) form.parentNode.insertBefore(panel, form.nextSibling);
             if (!button) return;
+
+            function readResponse(response) {
+                return response.text().then(function (body) {
+                    var data;
+                    try {
+                        data = JSON.parse(body);
+                    } catch (error) {
+                        var page = new DOMParser().parseFromString(body, 'text/html');
+                        var detail = (page.querySelector('h1') || page.querySelector('title'));
+                        throw new Error('服务器返回 HTTP ' + response.status
+                            + (detail ? '：' + detail.textContent.trim() : '，请查看服务器错误日志'));
+                    }
+                    if (!response.ok || !data.success) throw new Error(data.message || '备份失败');
+                    return data;
+                });
+            }
+
+            function pollStatus() {
+                fetch(endpoint, { credentials: 'same-origin', cache: 'no-store' })
+                    .then(readResponse)
+                    .then(function (data) {
+                        var result = data.status || {};
+                        if (result.running) {
+                            if (Date.now() / 1000 - Number(result.startedAt || 0) > 3600) {
+                                button.disabled = false;
+                                state.textContent = '备份超过 1 小时仍未完成，请检查服务器备份日志后重试。';
+                                return;
+                            }
+                            state.textContent = '正在后台备份，可离开页面后再回来查看结果…';
+                            setTimeout(pollStatus, 3000);
+                            return;
+                        }
+                        button.disabled = false;
+                        if (result.success) {
+                            state.textContent = '备份成功：' + result.snapshot
+                                + '，七牛新增 ' + result.qiniuUploaded + ' 个';
+                            last.textContent = '最近一次成功：' + result.finishedAt
+                                + '；快照 ' + result.snapshot + '。';
+                        } else {
+                            state.textContent = '备份失败：' + (result.message || '未知错误');
+                        }
+                    })
+                    .catch(function (error) {
+                        button.disabled = false;
+                        state.textContent = '无法读取备份状态：' + error.message;
+                    });
+            }
+
             button.addEventListener('click', function () {
                 button.disabled = true;
-                state.textContent = '正在备份，请不要关闭页面…';
-                fetch(<?php echo json_encode($endpoint, JSON_UNESCAPED_SLASHES); ?>, {
+                state.textContent = '正在启动后台备份…';
+                fetch(endpoint, {
                     method: 'POST', credentials: 'same-origin'
-                }).then(function (response) {
-                    return response.json().then(function (data) {
-                        if (!response.ok || !data.success) throw new Error(data.message || '备份失败');
-                        return data;
-                    });
-                }).then(function (data) {
-                    state.textContent = '备份成功：' + data.snapshot + '，七牛新增 ' + data.qiniuUploaded + ' 个';
+                }).then(readResponse).then(function () {
+                    state.textContent = '备份已启动，正在等待结果…';
+                    setTimeout(pollStatus, 1500);
                 }).catch(function (error) {
                     state.textContent = '备份失败：' + error.message;
-                }).finally(function () {
                     button.disabled = false;
                 });
             });
+            <?php if (!empty($status['running']) && time() - (int) ($status['startedAt'] ?? 0) < 3600): ?>
+            button.disabled = true;
+            pollStatus();
+            <?php endif; ?>
         }());
         </script>
         <?php
@@ -150,6 +199,11 @@ final class Plugin implements PluginInterface
     {
         if (!$status) {
             return '尚未执行过备份。';
+        }
+        if (!empty($status['running'])) {
+            return time() - (int) ($status['startedAt'] ?? 0) < 3600
+                ? '备份正在后台执行，可稍后刷新查看结果。'
+                : '备份超过 1 小时仍未完成，请检查服务器备份日志。';
         }
         if (!empty($status['success'])) {
             return '最近一次成功：' . ($status['finishedAt'] ?? '') . '；快照 ' . ($status['snapshot'] ?? '')
