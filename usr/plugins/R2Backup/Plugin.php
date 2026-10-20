@@ -103,6 +103,11 @@ final class Plugin implements PluginInterface
         if (($_GET['config'] ?? '') !== 'R2Backup') {
             return;
         }
+        // 插件更新不会再次调用 activate()。在设置页补登记新 action，避免旧安装升级后返回 404。
+        $actions = Options::alloc()->actionTable;
+        if (!is_array($actions) || ($actions['r2-backup-restore'] ?? null) !== RestoreAction::class) {
+            Helper::addAction('r2-backup-restore', RestoreAction::class);
+        }
         $endpoint = Security::alloc()->getIndex('/action/r2-backup-run');
         $restoreEndpoint = Security::alloc()->getIndex('/action/r2-backup-restore');
         $status = BackupService::status();
