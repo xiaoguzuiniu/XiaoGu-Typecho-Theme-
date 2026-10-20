@@ -19,13 +19,14 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 
 require_once __DIR__ . '/R2Client.php';
 require_once __DIR__ . '/BackupService.php';
+require_once __DIR__ . '/RestoreService.php';
 
 /**
  * Cloudflare R2 自动备份
  *
  * @package R2Backup
  * @author XiaoGu
- * @version 1.0.0
+ * @version 1.1.0
  * @link https://developers.cloudflare.com/r2/
  */
 final class Plugin implements PluginInterface
@@ -37,6 +38,7 @@ final class Plugin implements PluginInterface
         }
 
         Helper::addAction('r2-backup-run', BackupAction::class);
+        Helper::addAction('r2-backup-restore', RestoreAction::class);
         TypechoPlugin::factory('admin/footer.php')->end = __CLASS__ . '::renderAdminPanel';
         return _t('Cloudflare R2 备份插件已启用，请先填写 R2 配置并执行一次测试备份。');
     }
@@ -44,6 +46,7 @@ final class Plugin implements PluginInterface
     public static function deactivate()
     {
         Helper::removeAction('r2-backup-run');
+        Helper::removeAction('r2-backup-restore');
     }
 
     public static function config(Form $form)
@@ -101,12 +104,14 @@ final class Plugin implements PluginInterface
             return;
         }
         $endpoint = Security::alloc()->getIndex('/action/r2-backup-run');
+        $restoreEndpoint = Security::alloc()->getIndex('/action/r2-backup-restore');
         $status = BackupService::status();
         ?>
         <style>
             .r2-backup-panel{margin:22px 0;padding:18px;border:1px solid #d9d9d6;border-radius:6px;background:#fff}
             .r2-backup-panel h3{margin:0 0 7px}.r2-backup-panel p{margin:7px 0;color:#777}
             .r2-backup-panel button{margin-top:8px}.r2-backup-state{display:inline-block;margin-left:10px}
+            .r2-backup-panel select{min-width:230px;max-width:100%;padding:5px}.r2-backup-warning{color:#a33!important}
         </style>
         <section class="r2-backup-panel" id="r2-backup-panel">
             <h3>备份状态</h3>
@@ -114,6 +119,14 @@ final class Plugin implements PluginInterface
             <p id="r2-backup-last"><?php echo htmlspecialchars(self::statusText($status), ENT_QUOTES, 'UTF-8'); ?></p>
             <button type="button" class="btn primary" id="r2-backup-run">立即备份并测试</button>
             <span class="r2-backup-state" id="r2-backup-state" role="status"></span>
+        </section>
+        <section class="r2-backup-panel" id="r2-restore-panel">
+            <h3>从 R2 恢复</h3>
+            <p class="r2-backup-warning">会覆盖当前数据库和同名本地上传文件。系统将先自动生成一份“恢复前”保护快照；服务器配置和七牛云照片不会被覆盖。</p>
+            <p>选择快照：<select id="r2-restore-snapshot"><option value="">正在读取快照…</option></select></p>
+            <p id="r2-restore-summary">将显示所选快照的备份清单。</p>
+            <button type="button" class="btn" id="r2-restore-run" disabled>恢复所选快照</button>
+            <span class="r2-backup-state" id="r2-restore-state" role="status"></span>
         </section>
         <script>
         (function () {
@@ -123,7 +136,15 @@ final class Plugin implements PluginInterface
             var state = document.getElementById('r2-backup-state');
             var last = document.getElementById('r2-backup-last');
             var endpoint = <?php echo json_encode($endpoint, JSON_UNESCAPED_SLASHES); ?>;
+            var restoreEndpoint = <?php echo json_encode($restoreEndpoint, JSON_UNESCAPED_SLASHES); ?>;
+            var restorePanel = document.getElementById('r2-restore-panel');
+            var restoreSelect = document.getElementById('r2-restore-snapshot');
+            var restoreButton = document.getElementById('r2-restore-run');
+            var restoreState = document.getElementById('r2-restore-state');
+            var restoreSummary = document.getElementById('r2-restore-summary');
+            var restoreRunning = false;
             if (panel && form) form.parentNode.insertBefore(panel, form.nextSibling);
+            if (restorePanel && panel) panel.parentNode.insertBefore(restorePanel, panel.nextSibling);
             if (!button) return;
 
             function readResponse(response) {
@@ -184,6 +205,83 @@ final class Plugin implements PluginInterface
                 }).catch(function (error) {
                     state.textContent = '备份失败：' + error.message;
                     button.disabled = false;
+                });
+            });
+            function pollRestore() {
+                fetch(restoreEndpoint + '&status=1', {credentials: 'same-origin', cache: 'no-store'}).then(readResponse).then(function (data) {
+                    var result = data.status || {};
+                    if (result.running) {
+                        restoreRunning = true;
+                        if (Date.now() / 1000 - Number(result.startedAt || 0) > 7200) {
+                            restoreState.textContent = '恢复超过 2 小时，请查看服务器日志。';
+                            return;
+                        }
+                        restoreState.textContent = result.stage || '正在后台恢复…';
+                        setTimeout(pollRestore, 5000);
+                        return;
+                    }
+                    restoreRunning = false;
+                    restoreButton.disabled = false;
+                    restoreState.textContent = result.success
+                        ? '恢复成功；恢复前保护快照：' + result.protectionSnapshot + '。请刷新页面或重新登录。'
+                        : '恢复失败：' + (result.message || '请查看服务器恢复日志');
+                }).catch(function (error) {
+                    restoreState.textContent = '无法读取恢复状态：' + error.message + '。如登录状态已变更，请重新登录。';
+                });
+            }
+            function showRestoreSummary() {
+                if (!restoreSelect.value) return;
+                restoreButton.disabled = true;
+                restoreSummary.textContent = '正在检查快照清单…';
+                fetch(restoreEndpoint + '&snapshot=' + encodeURIComponent(restoreSelect.value), {credentials: 'same-origin', cache: 'no-store'})
+                    .then(readResponse).then(function (data) {
+                        var info = data.summary;
+                        restoreSummary.textContent = '备份时间：' + info.createdAt + '；站点：' + info.site
+                            + '；数据库表：' + info.tables + '；本地上传文件：' + info.localUploads + '。';
+                        restoreButton.disabled = restoreRunning;
+                    }).catch(function (error) {
+                        restoreSummary.textContent = '无法核对清单：' + error.message;
+                        restoreButton.disabled = true;
+                    });
+            }
+            fetch(restoreEndpoint, {credentials: 'same-origin', cache: 'no-store'}).then(readResponse).then(function (data) {
+                var snapshots = data.snapshots || [];
+                restoreSelect.replaceChildren();
+                snapshots.forEach(function (item) {
+                    var option = document.createElement('option');
+                    option.value = item.snapshot;
+                    option.textContent = item.snapshot.replace('/', ' ');
+                    restoreSelect.appendChild(option);
+                });
+                if (!snapshots.length) {
+                    restoreSelect.add(new Option('暂无可恢复快照', ''));
+                }
+                restoreRunning = !!(data.status || {}).running;
+                restoreButton.disabled = !snapshots.length || restoreRunning;
+                if (snapshots.length) showRestoreSummary();
+                if ((data.status || {}).running) pollRestore();
+            }).catch(function (error) {
+                restoreSelect.replaceChildren(new Option('读取失败', ''));
+                restoreState.textContent = error.message;
+            });
+            restoreSelect.addEventListener('change', showRestoreSummary);
+            restoreButton.addEventListener('click', function () {
+                var snapshot = restoreSelect.value;
+                if (!snapshot) return;
+                var phrase = '恢复 ' + snapshot;
+                var confirmation = window.prompt('将覆盖当前数据库和同名本地上传文件。请完整输入“' + phrase + '”以确认：');
+                if (confirmation !== phrase) return;
+                restoreButton.disabled = true;
+                restoreRunning = true;
+                restoreState.textContent = '正在启动恢复…';
+                var body = new URLSearchParams({snapshot: snapshot, confirmation: confirmation});
+                fetch(restoreEndpoint, {method: 'POST', credentials: 'same-origin', body: body}).then(readResponse).then(function () {
+                    restoreState.textContent = '恢复已开始；请不要重复点击。';
+                    setTimeout(pollRestore, 3000);
+                }).catch(function (error) {
+                    restoreButton.disabled = false;
+                    restoreRunning = false;
+                    restoreState.textContent = '无法启动恢复：' + error.message;
                 });
             });
             <?php if (!empty($status['running']) && time() - (int) ($status['startedAt'] ?? 0) < 3600): ?>

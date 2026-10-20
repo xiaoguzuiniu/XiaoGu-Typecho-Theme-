@@ -72,6 +72,23 @@ final class R2Client
         return $response['headers'];
     }
 
+    public function getFile(string $key, string $path): void
+    {
+        $handle = fopen($path, 'wb');
+        if ($handle === false) {
+            throw new RuntimeException('无法创建临时恢复文件');
+        }
+        try {
+            $response = $this->request('GET', $key, [], [], null, null, $handle);
+        } finally {
+            fclose($handle);
+        }
+        if ($response['status'] !== 200) {
+            @unlink($path);
+            throw new RuntimeException('下载 R2 备份失败：HTTP ' . $response['status']);
+        }
+    }
+
     public function delete(string $key): void
     {
         $response = $this->request('DELETE', $key);
@@ -122,7 +139,8 @@ final class R2Client
         array $query = [],
         array $extraHeaders = [],
         ?string $payloadPath = null,
-        $payloadHandle = null
+        $payloadHandle = null,
+        $downloadHandle = null
     ): array {
         $method = strtoupper($method);
         $canonicalUri = '/' . rawurlencode($this->bucket);
@@ -210,6 +228,11 @@ final class R2Client
             $options[CURLOPT_UPLOAD] = true;
             $options[CURLOPT_INFILE] = $payloadHandle;
             $options[CURLOPT_INFILESIZE] = filesize($payloadPath);
+        }
+        if ($downloadHandle !== null) {
+            $options[CURLOPT_WRITEFUNCTION] = static function ($curl, string $data) use ($downloadHandle): int {
+                return fwrite($downloadHandle, $data);
+            };
         }
 
         curl_setopt_array($curl, $options);

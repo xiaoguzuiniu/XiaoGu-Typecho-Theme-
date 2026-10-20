@@ -15,7 +15,7 @@ final class BackupService
     private const RETENTION_DAYS = 14;
     private const STATUS_OPTION = 'r2_backup_status';
 
-    public static function run(string $source = 'manual'): array
+    public static function run(string $source = 'manual', bool $skipQiniu = false): array
     {
         self::useSiteTimezone();
         // 使用所有运行用户都可读取的插件文件作锁，避免 /tmp 中不同所有者创建的锁文件被系统拒绝打开。
@@ -36,6 +36,13 @@ final class BackupService
                 $config['secretKey']
             );
             $snapshot = date('Y-m-d/His');
+            for ($attempt = 0; $attempt < 5 && $client->head($config['prefix'] . '/snapshots/' . $snapshot . '/manifest.json') !== null; $attempt++) {
+                sleep(1);
+                $snapshot = date('Y-m-d/His');
+            }
+            if ($client->head($config['prefix'] . '/snapshots/' . $snapshot . '/manifest.json') !== null) {
+                throw new RuntimeException('无法生成唯一的快照编号，请稍后重试');
+            }
             $snapshotPrefix = $config['prefix'] . '/snapshots/' . $snapshot;
             $manifest = [
                 'version' => 1,
@@ -44,7 +51,7 @@ final class BackupService
                 'source' => $source,
                 'retentionDays' => self::RETENTION_DAYS,
                 'files' => [],
-                'qiniu' => ['enabled' => $config['syncQiniu'], 'uploaded' => 0, 'skipped' => 0],
+                'qiniu' => ['enabled' => $config['syncQiniu'] && !$skipQiniu, 'uploaded' => 0, 'skipped' => 0],
             ];
 
             $databasePath = self::temporaryPath('xiaogu-db-', '.sql.gz');
@@ -86,7 +93,7 @@ final class BackupService
                 }
             }
 
-            if ($config['syncQiniu']) {
+            if ($config['syncQiniu'] && !$skipQiniu) {
                 $manifest['qiniu'] = self::syncQiniuBucket($client, $config['prefix'], $temporaryFiles);
             }
 
