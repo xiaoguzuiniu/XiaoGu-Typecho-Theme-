@@ -3,6 +3,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 $isGuestbookComments = $this->is('page', 'guestbook');
 $commentsLabel = $isGuestbookComments ? '留言' : '评论';
+$commentMailVerified = xiaoGuIsCommentMailVerified((string) $this->remember('mail', true));
 ?>
 
 <section id="comments" class="comments-area<?php if ($isGuestbookComments): ?> guestbook-comments-area<?php endif; ?>" aria-label="<?php echo $commentsLabel; ?>区">
@@ -32,19 +33,28 @@ $commentsLabel = $isGuestbookComments ? '留言' : '评论';
 
     <?php if ($this->allow('comment')): ?>
         <div id="<?php $this->respondId(); ?>" class="respond">
-            <?php if (!$isGuestbookComments): ?>
-                <div class="cancel-comment-reply"><?php $comments->cancelReply(); ?></div>
-            <?php endif; ?>
+            <div class="cancel-comment-reply"><?php $comments->cancelReply(); ?></div>
             <?php if ($isGuestbookComments): ?>
                 <h2 id="response">写下你的<?php echo $commentsLabel; ?></h2>
             <?php endif; ?>
 
             <form method="post" action="<?php $this->commentUrl(); ?>" id="comment-form" role="form" novalidate
-                  class="comment-card<?php if (!$isGuestbookComments): ?> post-comment-card<?php endif; ?>">
+                  class="comment-card<?php if (!$isGuestbookComments): ?> post-comment-card<?php endif; ?>"
+                  data-mail-verify-url="<?php echo htmlspecialchars(rtrim((string) $this->options->siteUrl, '/') . '/?xiaogu_action=', ENT_QUOTES, 'UTF-8'); ?>"
+                  data-mail-verify-token="<?php echo htmlspecialchars($this->security->getToken($this->request->getRequestUrl()), ENT_QUOTES, 'UTF-8'); ?>"
+                  data-verified-mail="<?php echo $commentMailVerified ? htmlspecialchars(strtolower(trim((string) $this->remember('mail', true))), ENT_QUOTES, 'UTF-8') : ''; ?>"
+                  data-mail-verification-required="<?php echo \Widget\User::alloc()->pass('editor', true) ? '0' : '1'; ?>">
                 <div class="comment-fields">
                     <input type="text" name="author" placeholder="昵称 *" value="<?php $this->remember('author'); ?>" required>
                     <input type="email" name="mail" placeholder="邮箱 *" value="<?php $this->remember('mail'); ?>" required>
                     <input type="url" name="url" placeholder="网址（选填）" value="<?php $this->remember('url'); ?>">
+                </div>
+                <div class="comment-email-verification">
+                    <button type="button" class="comment-mail-send">发送邮箱验证码</button>
+                    <input type="text" class="comment-mail-code" inputmode="numeric" autocomplete="one-time-code"
+                           maxlength="6" pattern="[0-9]{6}" placeholder="输入 6 位验证码" aria-label="邮箱验证码">
+                    <button type="button" class="comment-mail-check">验证邮箱</button>
+                    <span class="comment-mail-state" role="status"><?php echo $commentMailVerified ? '邮箱已验证' : ''; ?></span>
                 </div>
                 <input type="hidden" name="xiaogu_visitor_comment" value="1">
                 <span class="comment-form-status" role="status" hidden></span>

@@ -175,7 +175,11 @@ if ($browserTitle === '') {
                                 <?php if ($this->allow('comment')): ?>
                                     <form method="post"
                                           action="<?php echo htmlspecialchars(rtrim($this->options->siteUrl, '/') . '/?xiaogu_action=moment_comment&cid=' . (int) $this->cid, ENT_QUOTES, 'UTF-8'); ?>"
-                                          class="moment-comment-form" hidden novalidate>
+                                          class="moment-comment-form" hidden novalidate
+                                          data-mail-verify-url="<?php echo htmlspecialchars(rtrim((string) $this->options->siteUrl, '/') . '/?xiaogu_action=', ENT_QUOTES, 'UTF-8'); ?>"
+                                          data-mail-verify-token="<?php echo htmlspecialchars($this->security->getToken($this->request->getRequestUrl()), ENT_QUOTES, 'UTF-8'); ?>"
+                                          data-verified-mail="<?php echo xiaoGuIsCommentMailVerified((string) $this->remember('mail', true)) ? htmlspecialchars(strtolower(trim((string) $this->remember('mail', true))), ENT_QUOTES, 'UTF-8') : ''; ?>"
+                                          data-mail-verification-required="<?php echo \Widget\User::alloc()->pass('editor', true) ? '0' : '1'; ?>">
                                         <div class="moment-comment-identity">
                                             <input type="text" name="author" placeholder="昵称 *"
                                                    value="<?php $this->remember('author'); ?>" required>
@@ -183,6 +187,13 @@ if ($browserTitle === '') {
                                                    value="<?php $this->remember('mail'); ?>" required>
                                             <input type="url" name="url" placeholder="网址（选填）"
                                                    value="<?php $this->remember('url'); ?>">
+                                        </div>
+                                        <div class="comment-email-verification">
+                                            <button type="button" class="comment-mail-send">发送邮箱验证码</button>
+                                            <input type="text" class="comment-mail-code" inputmode="numeric" autocomplete="one-time-code"
+                                                   maxlength="6" pattern="[0-9]{6}" placeholder="输入 6 位验证码" aria-label="邮箱验证码">
+                                            <button type="button" class="comment-mail-check">验证邮箱</button>
+                                            <span class="comment-mail-state" role="status"><?php echo xiaoGuIsCommentMailVerified((string) $this->remember('mail', true)) ? '邮箱已验证' : ''; ?></span>
                                         </div>
                                         <input type="hidden" name="xiaogu_visitor_comment" value="1">
                                         <div class="moment-comment-compose">
@@ -256,6 +267,7 @@ if ($browserTitle === '') {
 </div>
 
 <script src="<?php $this->options->themeUrl('assets/comment-validation.js?v=' . filemtime(__DIR__ . '/assets/comment-validation.js')); ?>"></script>
+<script src="<?php $this->options->themeUrl('assets/comment-email-verification.js?v=' . filemtime(__DIR__ . '/assets/comment-email-verification.js')); ?>"></script>
 <script src="<?php $this->options->themeUrl('assets/damped-scroll.js?v=' . filemtime(__DIR__ . '/assets/damped-scroll.js')); ?>"></script>
 <script>
     (function () {

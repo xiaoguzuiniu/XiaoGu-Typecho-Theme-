@@ -24,7 +24,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
  *
  * @package CommentMailer
  * @author XiaoGu
- * @version 1.0.0
+ * @version 1.1.0
  * @link https://mail.163.com/
  */
 class Plugin implements PluginInterface
@@ -179,6 +179,22 @@ class Plugin implements PluginInterface
         } catch (\Throwable $exception) {
             error_log('[CommentMailer] ' . $exception->getMessage());
         }
+    }
+
+    public static function sendVerificationCode(string $recipient, string $code): void
+    {
+        if (!filter_var($recipient, FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{6}$/D', $code)) {
+            throw new RuntimeException('邮箱验证码参数无效');
+        }
+        $config = self::getConfig();
+        self::sendMail(
+            $config,
+            $recipient,
+            '小古有趣 · 评论邮箱验证码',
+            '<p>你的评论邮箱验证码是：</p><p style="font-size:26px;font-weight:bold;letter-spacing:5px">'
+                . $code . '</p><p>10 分钟内有效。若不是你本人操作，请忽略此邮件。</p>',
+            null
+        );
     }
 
     /**

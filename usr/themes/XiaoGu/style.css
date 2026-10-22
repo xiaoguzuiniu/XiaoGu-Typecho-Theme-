@@ -1878,8 +1878,9 @@ body.is-image-lightbox-open {
     grid-template-areas:
         "content content"
         "author meta"
+        "reply reply"
         "children children";
-    grid-template-rows: minmax(72px, auto) auto auto;
+    grid-template-rows: minmax(72px, auto) auto auto auto;
     align-content: start;
     break-inside: avoid;
     border: 0;
@@ -1977,7 +1978,15 @@ body.is-image-lightbox-open {
 }
 
 .guestbook-comments-area > .comment-list > li > .comment-reply {
-    display: none;
+    grid-area: reply;
+    justify-self: end;
+    margin-top: 8px;
+    font-size: 11px;
+}
+
+.guestbook-comments-area .comment-reply a {
+    color: var(--primary);
+    cursor: pointer;
 }
 
 .guestbook-comments-area > .comment-list > li > .comment-children,
@@ -2920,6 +2929,50 @@ body.is-gallery-lightbox-open {
 
 .comment-fields input:focus {
     background: rgba(0,0,0,0.015);
+}
+
+.comment-email-verification {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 9px 14px;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+}
+
+.comment-email-verification button {
+    padding: 6px 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    cursor: pointer;
+}
+
+.comment-email-verification button:disabled {
+    cursor: wait;
+    opacity: .6;
+}
+
+.comment-email-verification .comment-mail-code {
+    width: 130px;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+}
+
+.comment-mail-state { color: var(--muted); }
+.comment-mail-state.is-error { color: #d34b57; }
+[data-mail-verification-required="0"] .comment-email-verification { display: none; }
+
+.moment-comment-form .comment-email-verification {
+    padding: 3px 0 8px;
+    border-top: 0;
 }
 
 .comment-textarea {

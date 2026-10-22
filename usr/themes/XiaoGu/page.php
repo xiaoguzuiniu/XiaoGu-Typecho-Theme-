@@ -201,6 +201,7 @@ if ($profileSignature === '') {
 </div>
 
 <script src="<?php $this->options->themeUrl('assets/comment-validation.js?v=' . filemtime(__DIR__ . '/assets/comment-validation.js')); ?>"></script>
+<script src="<?php $this->options->themeUrl('assets/comment-email-verification.js?v=' . filemtime(__DIR__ . '/assets/comment-email-verification.js')); ?>"></script>
 <script src="<?php $this->options->themeUrl('assets/damped-scroll.js?v=' . filemtime(__DIR__ . '/assets/damped-scroll.js')); ?>"></script>
 <script>
     (function () {
@@ -265,7 +266,7 @@ if ($profileSignature === '') {
         }
 
         document.addEventListener('click', function (event) {
-            const replyLink = event.target.closest('.book-comment-list .comment-reply a');
+            const replyLink = event.target.closest('.book-comment-list .comment-reply a, .guestbook-comments-area .comment-reply a');
             if (!replyLink) return;
 
             event.preventDefault();
