@@ -266,7 +266,7 @@ if ($profileSignature === '') {
         }
 
         document.addEventListener('click', function (event) {
-            const replyLink = event.target.closest('.book-comment-list .comment-reply a, .guestbook-comments-area .comment-reply a');
+            const replyLink = event.target.closest('.book-comment-list .comment-reply a');
             if (!replyLink) return;
 
             event.preventDefault();

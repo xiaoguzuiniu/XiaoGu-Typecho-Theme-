@@ -354,6 +354,10 @@ function themeInit($archive)
 
 function applyXiaoGuVisitorCommentIdentity(array $comment, \Widget\Archive $content): array
 {
+    if ($content->is('page', 'guestbook') && (int) ($comment['parent'] ?? 0) > 0) {
+        throw new \Typecho\Exception('留言板只支持独立留言，不能回复其他留言');
+    }
+
     $request = \Typecho\Request::getInstance();
     $author = trim((string) $request->get('author'));
     $mail = trim((string) $request->get('mail'));

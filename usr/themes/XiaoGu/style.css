@@ -1878,9 +1878,8 @@ body.is-image-lightbox-open {
     grid-template-areas:
         "content content"
         "author meta"
-        "reply reply"
         "children children";
-    grid-template-rows: minmax(72px, auto) auto auto auto;
+    grid-template-rows: minmax(72px, auto) auto auto;
     align-content: start;
     break-inside: avoid;
     border: 0;
@@ -1977,16 +1976,8 @@ body.is-image-lightbox-open {
     white-space: nowrap;
 }
 
-.guestbook-comments-area > .comment-list > li > .comment-reply {
-    grid-area: reply;
-    justify-self: end;
-    margin-top: 8px;
-    font-size: 11px;
-}
-
-.guestbook-comments-area .comment-reply a {
-    color: var(--primary);
-    cursor: pointer;
+.guestbook-comments-area .comment-reply {
+    display: none;
 }
 
 .guestbook-comments-area > .comment-list > li > .comment-children,

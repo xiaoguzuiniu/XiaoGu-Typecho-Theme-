@@ -33,7 +33,9 @@ $commentMailVerified = xiaoGuIsCommentMailVerified((string) $this->remember('mai
 
     <?php if ($this->allow('comment')): ?>
         <div id="<?php $this->respondId(); ?>" class="respond">
-            <div class="cancel-comment-reply"><?php $comments->cancelReply(); ?></div>
+            <?php if (!$isGuestbookComments): ?>
+                <div class="cancel-comment-reply"><?php $comments->cancelReply(); ?></div>
+            <?php endif; ?>
             <?php if ($isGuestbookComments): ?>
                 <h2 id="response">写下你的<?php echo $commentsLabel; ?></h2>
             <?php endif; ?>
