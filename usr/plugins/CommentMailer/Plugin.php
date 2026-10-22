@@ -112,8 +112,8 @@ class Plugin implements PluginInterface
             'enableEmailReplies',
             ['0' => _t('关闭'), '1' => _t('开启')],
             '0',
-            _t('邮件回复自动发布'),
-            _t('开启后，收件人直接回复通知邮件即可将内容发布到网站评论区。需要先完成下方 Resend 配置。')
+            _t('邮件回复提交评论'),
+            _t('开启后，收件人回复通知邮件可提交评论；评论需经站长审核后才会公开显示。需要先完成下方 Resend 配置。')
         );
         $form->addInput($enableEmailReplies);
 
@@ -179,22 +179,6 @@ class Plugin implements PluginInterface
         } catch (\Throwable $exception) {
             error_log('[CommentMailer] ' . $exception->getMessage());
         }
-    }
-
-    public static function sendVerificationCode(string $recipient, string $code): void
-    {
-        if (!filter_var($recipient, FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{6}$/D', $code)) {
-            throw new RuntimeException('邮箱验证码参数无效');
-        }
-        $config = self::getConfig();
-        self::sendMail(
-            $config,
-            $recipient,
-            '小古有趣 · 评论邮箱验证码',
-            '<p>你的评论邮箱验证码是：</p><p style="font-size:26px;font-weight:bold;letter-spacing:5px">'
-                . $code . '</p><p>10 分钟内有效。若不是你本人操作，请忽略此邮件。</p>',
-            null
-        );
     }
 
     /**
@@ -830,8 +814,7 @@ class Plugin implements PluginInterface
         }
 
         $sender = self::senderIdentity((string) ($email['from'] ?? ''), $senderEmail);
-        $isAuthenticated = self::isAuthenticatedSender($email);
-        $commentStatus = $isAuthenticated ? 'approved' : 'waiting';
+        $commentStatus = 'waiting';
         $commentId = $action->insertInboundComment([
             'cid' => (int) $parent['cid'],
             'created' => time(),
@@ -856,7 +839,7 @@ class Plugin implements PluginInterface
         );
 
         return [
-            'status' => $commentStatus === 'approved' ? 'published' : 'waiting',
+            'status' => 'waiting',
             'commentId' => $commentId,
         ];
     }
@@ -979,18 +962,6 @@ class Plugin implements PluginInterface
         }
 
         return preg_match('/\b(bulk|junk|list)\b/i', $headers['precedence'] ?? '') === 1;
-    }
-
-    private static function isAuthenticatedSender(array $email): bool
-    {
-        $headers = self::normalizedEmailHeaders($email);
-        $authentication = $headers['authentication-results'] ?? '';
-
-        return preg_match('/\bdmarc=pass\b/i', $authentication) === 1
-            || (
-                preg_match('/\bspf=pass\b/i', $authentication) === 1
-                && preg_match('/\bdkim=pass\b/i', $authentication) === 1
-            );
     }
 
     private static function normalizedEmailHeaders(array $email): array

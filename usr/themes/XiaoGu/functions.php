@@ -3,7 +3,6 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 require_once __DIR__ . '/basketball.php';
 require_once __DIR__ . '/ledger.php';
-require_once __DIR__ . '/comment-email-verification.php';
 
 if (!defined('__TYPECHO_GRAVATAR_PREFIX__')) {
     define('__TYPECHO_GRAVATAR_PREFIX__', 'https://cravatar.cn/avatar/');
@@ -20,6 +19,19 @@ if (defined('__TYPECHO_ADMIN__')) {
  */
 function themeInit($archive)
 {
+    // Typecho 会用 Cookie 向提交者展示待审核评论；这里也统一等审核通过后再显示。
+    $pendingCommentId = (int) \Typecho\Cookie::get('__typecho_unapproved_comment');
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET' && $pendingCommentId > 0) {
+        $pendingComment = \Typecho\Db::get()->fetchRow(
+            \Typecho\Db::get()->select('cid')->from('table.comments')
+                ->where('coid = ? AND status = ?', $pendingCommentId, 'waiting')->limit(1)
+        );
+        if ($pendingComment) {
+            $GLOBALS['xiaogu_comment_awaiting_moderation_cid'] = (int) $pendingComment['cid'];
+        }
+        \Typecho\Cookie::delete('__typecho_unapproved_comment');
+    }
+
     static $visitorCommentHookRegistered = false;
     if (!$visitorCommentHookRegistered) {
         \Typecho\Plugin::factory(\Widget\Feedback::class)->comment = 'applyXiaoGuVisitorCommentIdentity';
@@ -28,10 +40,6 @@ function themeInit($archive)
 
     $action = isset($_GET['xiaogu_action']) ? $_GET['xiaogu_action'] : '';
     $cid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
-
-    if (in_array($action, ['mail_code', 'mail_verify'], true)) {
-        xiaoGuHandleCommentMailAction($action);
-    }
 
     if ($cid <= 0 || !in_array($action, ['view', 'like', 'moment_comment', 'friend_apply', 'friend_review'], true)) {
         return;
@@ -357,18 +365,16 @@ function applyXiaoGuVisitorCommentIdentity(array $comment, \Widget\Archive $cont
     if ($content->is('page', 'guestbook') && (int) ($comment['parent'] ?? 0) > 0) {
         throw new \Typecho\Exception('留言板只支持独立留言，不能回复其他留言');
     }
+    if (($content->is('post') || $content->is('page', 'guestbook'))
+        && !\Widget\User::alloc()->pass('editor', true)) {
+        $comment['status'] = 'waiting';
+    }
 
     $request = \Typecho\Request::getInstance();
     $author = trim((string) $request->get('author'));
     $mail = trim((string) $request->get('mail'));
     $url = trim((string) $request->get('url'));
-    $requiresMailVerification = ($content->is('post') || $content->is('page', 'guestbook'))
-        && !\Widget\User::alloc()->pass('editor', true);
-
     if ($author === '' && $mail === '') {
-        if ($requiresMailVerification) {
-            throw new \Typecho\Exception('请填写昵称和邮箱，并先验证邮箱');
-        }
         return $comment;
     }
 
@@ -381,10 +387,6 @@ function applyXiaoGuVisitorCommentIdentity(array $comment, \Widget\Archive $cont
         || ($mail !== '' && (strlen($mail) > 150 || !filter_var($mail, FILTER_VALIDATE_EMAIL)))
     ) {
         throw new \Typecho\Exception('请填写正确的邮箱');
-    }
-    if ($requiresMailVerification
-        && !xiaoGuIsCommentMailVerified($mail)) {
-        throw new \Typecho\Exception('请先获取验证码并验证邮箱，再发布评论或留言');
     }
     if ($url !== '') {
         if (strlen($url) > 255 || !filter_var($url, FILTER_VALIDATE_URL)) {
