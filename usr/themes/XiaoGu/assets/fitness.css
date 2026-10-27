@@ -23,39 +23,15 @@
 .fitness-panel-label span { color: var(--primary); margin-right: 8px; }
 
 .fitness-character {
-    display: flex;
-    min-height: 330px;
-    flex-direction: column;
-    align-items: center;
-    padding: 24px 18px;
-    text-align: center;
-}
-
-.fitness-character .fitness-panel-label { align-self: flex-start; }
-
-.fitness-character-art {
     display: grid;
-    width: min(100%, 168px);
-    min-height: 218px;
-    margin: 18px auto 6px;
+    min-height: 330px;
     place-items: center;
-    border-radius: 18px;
-    background: linear-gradient(145deg, #f0f0ff, #e5f4f4);
 }
 
-.fitness-character-art svg {
-    width: 100px;
-    height: 140px;
+.fitness-character svg {
+    width: 145px;
+    height: 203px;
     image-rendering: pixelated;
-    filter: drop-shadow(0 12px 0 rgba(55, 65, 135, .12));
-}
-
-.fitness-character p {
-    max-width: 180px;
-    margin: auto 0 0;
-    color: var(--muted);
-    font-size: 11px;
-    line-height: 1.6;
 }
 
 .fitness-calendar { padding: 24px 26px 20px; }
@@ -129,9 +105,8 @@
 
 @media (max-width: 750px) {
     .fitness-page { grid-template-columns: 1fr; gap: 14px; }
-    .fitness-character { min-height: 0; }
-    .fitness-character-art { min-height: 170px; margin-top: 14px; }
-    .fitness-character-art svg { width: 78px; height: 110px; }
+    .fitness-character { min-height: 180px; }
+    .fitness-character svg { width: 110px; height: 154px; }
     .fitness-workout { grid-column: 1; }
 }
 
@@ -142,5 +117,4 @@
     .fitness-exercise-copy h3 { font-size: 13px; }
 }
 
-[data-theme="dark"] .fitness-character-art { background: linear-gradient(145deg, #34375a, #2d4a55); }
 [data-theme="dark"] .fitness-day-status.is-completed { background: #25473a; color: #8de4b5; }

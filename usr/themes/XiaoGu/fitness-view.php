@@ -27,21 +27,17 @@ $fitnessExercises = [
 ?>
 
 <div class="fitness-page" id="fitness-page">
-    <section class="fitness-character fitness-panel" aria-label="个人像素形象">
-        <div class="fitness-panel-label"><span>01</span> 我的像素形象</div>
-        <div class="fitness-character-art" aria-hidden="true">
-            <svg viewBox="0 0 80 112" role="img" focusable="false" shape-rendering="crispEdges">
-                <path fill="#33385d" d="M24 4h32v8H24zM16 12h48v24H16zM24 36h32v8H24z"/>
-                <path fill="#f7c69d" d="M24 20h32v32H24zM16 28h8v16h-8zM56 28h8v16h-8z"/>
-                <path fill="#33385d" d="M28 28h8v8h-8zM44 28h8v8h-8z"/>
-                <path fill="#de9279" d="M32 44h16v4H32z"/>
-                <path fill="#5759e8" d="M20 52h40v36H20zM12 60h8v24h-8zM60 60h8v24h-8z"/>
-                <path fill="#e0e5ff" d="M36 52h8v12h-8z"/>
-                <path fill="#343b71" d="M24 88h16v16H24zM40 88h16v16H40z"/>
-                <path fill="#242b50" d="M16 104h24v8H16zM40 104h24v8H40z"/>
-            </svg>
-        </div>
-        <p>像素形象先放个占位，之后换成你的专属小人。</p>
+    <section class="fitness-character" aria-label="个人像素形象">
+        <svg viewBox="0 0 80 112" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+            <path fill="#33385d" d="M24 4h32v8H24zM16 12h48v24H16zM24 36h32v8H24z"/>
+            <path fill="#f7c69d" d="M24 20h32v32H24zM16 28h8v16h-8zM56 28h8v16h-8z"/>
+            <path fill="#33385d" d="M28 28h8v8h-8zM44 28h8v8h-8z"/>
+            <path fill="#de9279" d="M32 44h16v4H32z"/>
+            <path fill="#5759e8" d="M20 52h40v36H20zM12 60h8v24h-8zM60 60h8v24h-8z"/>
+            <path fill="#e0e5ff" d="M36 52h8v12h-8z"/>
+            <path fill="#343b71" d="M24 88h16v16H24zM40 88h16v16H40z"/>
+            <path fill="#242b50" d="M16 104h24v8H16zM40 104h24v8H40z"/>
+        </svg>
     </section>
 
     <section class="fitness-calendar fitness-panel" aria-label="健身日历">
