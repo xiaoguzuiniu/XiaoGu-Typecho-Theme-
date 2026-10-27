@@ -74,18 +74,18 @@
 .fitness-calendar-day:hover { background: var(--primary-soft); }
 .fitness-calendar-day.is-today { box-shadow: inset 0 0 0 1px var(--primary); }
 .fitness-calendar-day.is-selected { background: var(--primary); color: white; }
+.fitness-calendar-day.is-completed { padding-right: 11px; }
 .fitness-calendar-day.is-completed::after {
     position: absolute;
-    bottom: 3px;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: #49bc83;
-    content: '';
+    right: 3px;
+    bottom: 1px;
+    color: #24935c;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    content: '✓';
 }
-.fitness-calendar-day.is-selected.is-completed::after { background: white; }
-.fitness-calendar-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; color: var(--muted); font-size: 11px; }
-.fitness-calendar-legend i { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: #49bc83; }
+.fitness-calendar-day.is-selected.is-completed::after { color: white; }
 .fitness-message { margin: 8px 0 0; color: #d45f68; font-size: 12px; }
 
 .fitness-workout { display: flex; grid-column: 1 / -1; min-height: 0; flex-direction: column; padding: 26px; }
@@ -151,7 +151,6 @@
     .fitness-weekdays { margin-top: 10px; }
     .fitness-calendar-days { margin-top: 5px; }
     .fitness-calendar-day, .fitness-calendar-blank { height: 30px; }
-    .fitness-calendar-legend { margin-top: 8px; }
     .fitness-workout { grid-column: 1; }
 }
 
@@ -173,5 +172,4 @@
     .fitness-page { grid-template-rows: 44px auto minmax(0, 1fr); }
     .fitness-character svg { width: 32px; height: 44px; }
     .fitness-calendar-day, .fitness-calendar-blank { height: 25px; }
-    .fitness-calendar-legend { display: none; }
 }

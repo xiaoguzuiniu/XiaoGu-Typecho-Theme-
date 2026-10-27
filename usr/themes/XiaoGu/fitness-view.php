@@ -53,7 +53,6 @@ $fitnessTuesdayExercises = [
         </div>
         <div class="fitness-weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
         <div class="fitness-calendar-days" id="fitness-calendar-days" aria-label="选择训练日期"></div>
-        <div class="fitness-calendar-legend"><span><i></i> 已打卡</span></div>
         <?php if ($fitnessError !== ''): ?><p class="fitness-message" role="status"><?php echo htmlspecialchars($fitnessError, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
     </section>
 
