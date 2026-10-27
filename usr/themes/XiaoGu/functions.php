@@ -3,6 +3,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 require_once __DIR__ . '/basketball.php';
 require_once __DIR__ . '/ledger.php';
+require_once __DIR__ . '/fitness.php';
 
 if (!defined('__TYPECHO_GRAVATAR_PREFIX__')) {
     define('__TYPECHO_GRAVATAR_PREFIX__', 'https://cravatar.cn/avatar/');
@@ -40,6 +41,10 @@ function themeInit($archive)
 
     $action = isset($_GET['xiaogu_action']) ? $_GET['xiaogu_action'] : '';
     $cid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
+
+    if ($action === 'fitness_status') {
+        xiaoguFitnessHandleStatus();
+    }
 
     if ($cid <= 0 || !in_array($action, ['view', 'like', 'moment_comment', 'friend_apply', 'friend_review'], true)) {
         return;

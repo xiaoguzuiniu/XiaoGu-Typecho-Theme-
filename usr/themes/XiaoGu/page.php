@@ -53,6 +53,10 @@ if ($profileSignature === '') {
         <link rel="stylesheet"
               href="<?php $this->options->themeUrl('assets/ledger.css?v=' . filemtime(__DIR__ . '/assets/ledger.css')); ?>">
     <?php endif; ?>
+    <?php if ($isFitness): ?>
+        <link rel="stylesheet"
+              href="<?php $this->options->themeUrl('assets/fitness.css?v=' . filemtime(__DIR__ . '/assets/fitness.css')); ?>">
+    <?php endif; ?>
     <?php $this->header(); ?>
 </head>
 
@@ -64,7 +68,7 @@ if ($profileSignature === '') {
         <?php $this->need('topbar.php'); ?>
 
         <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php elseif ($isGallery): ?> gallery-layout<?php elseif ($isLedger): ?> ledger-layout<?php elseif ($isFitness): ?> fitness-layout<?php endif; ?>">
-            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>"<?php if (!$isGallery && !$isLedger): ?> data-damped-scroll<?php endif; ?>>
+            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>"<?php if (!$isGallery && !$isLedger && !$isFitness): ?> data-damped-scroll<?php endif; ?>>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
                         <section class="post-detail-hero" aria-label="文章头图">
@@ -166,9 +170,7 @@ if ($profileSignature === '') {
                         <?php elseif ($isLedger): ?>
                             <?php $this->need('ledger-view.php'); ?>
                         <?php elseif ($isFitness): ?>
-                            <div class="page-content">
-                                <?php $this->content(); ?>
-                            </div>
+                            <?php $this->need('fitness-view.php'); ?>
                         <?php elseif ($isAbout): ?>
                             <header class="about-hero">
                                 <h1><?php $this->title(); ?></h1>
@@ -438,6 +440,9 @@ if ($profileSignature === '') {
     <script src="<?php $this->options->themeUrl('assets/gallery.js?v=' . filemtime(__DIR__ . '/assets/gallery.js')); ?>"></script>
 <?php else: ?>
     <script src="<?php $this->options->themeUrl('assets/image-lightbox.js?v=' . filemtime(__DIR__ . '/assets/image-lightbox.js')); ?>"></script>
+<?php endif; ?>
+<?php if ($isFitness): ?>
+    <script src="<?php $this->options->themeUrl('assets/fitness.js?v=' . filemtime(__DIR__ . '/assets/fitness.js')); ?>"></script>
 <?php endif; ?>
 <?php $this->footer(); ?>
 </body>
