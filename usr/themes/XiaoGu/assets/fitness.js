@@ -12,14 +12,10 @@
     let requestController = null;
     const daysNode = document.getElementById('fitness-calendar-days');
     const monthTitle = document.getElementById('fitness-month-title');
-    const dayTitle = document.getElementById('fitness-day-title');
-    const dayMeta = document.getElementById('fitness-day-meta');
-    const workoutCount = document.getElementById('fitness-workout-count');
     const workoutContent = document.getElementById('fitness-workout-content');
     const dialog = document.getElementById('fitness-checkin-dialog');
     const detailTitle = document.getElementById('fitness-checkin-title');
     const detailContent = document.getElementById('fitness-checkin-content');
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     let updateExerciseToggles = () => {};
 
     function dateKey(date) {
@@ -58,12 +54,6 @@
     function renderTodayWorkout() {
         const templateIds = {1: 'fitness-monday-template', 2: 'fitness-tuesday-template'};
         const template = document.getElementById(templateIds[todayDate.getDay()] || 'fitness-empty-template');
-        const planTitle = template.dataset.planTitle || '计划待添加';
-        const exerciseCount = Number(template.dataset.exerciseCount || 0);
-        dayTitle.textContent = `${weekdays[todayDate.getDay()]} · ${planTitle}`;
-        dayMeta.textContent = `${todayDate.getMonth() + 1} 月 ${todayDate.getDate()} 日 · 今日训练安排`;
-        workoutCount.textContent = `${exerciseCount} 个动作`;
-        workoutCount.hidden = exerciseCount === 0;
         workoutContent.replaceChildren(template.content.cloneNode(true));
 
         const descriptions = Array.from(workoutContent.querySelectorAll('.fitness-exercise-description'));

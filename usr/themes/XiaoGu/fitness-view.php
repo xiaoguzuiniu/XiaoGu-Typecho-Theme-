@@ -44,7 +44,7 @@ $fitnessTuesdayExercises = [
 
     <section class="fitness-calendar fitness-panel" aria-label="健身日历">
         <div class="fitness-panel-head">
-            <div><div class="fitness-panel-label"><span>02</span> 健身日历</div><h2 id="fitness-month-title"></h2></div>
+            <h2 id="fitness-month-title"></h2>
             <div class="fitness-month-actions">
                 <button type="button" id="fitness-prev-month" aria-label="上个月">‹</button>
                 <button type="button" id="fitness-today" aria-label="回到今天">今天</button>
@@ -53,19 +53,11 @@ $fitnessTuesdayExercises = [
         </div>
         <div class="fitness-weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
         <div class="fitness-calendar-days" id="fitness-calendar-days" aria-label="选择训练日期"></div>
-        <div class="fitness-calendar-legend"><span><i></i> 已打卡</span><span>点击日期查看打卡详情</span></div>
+        <div class="fitness-calendar-legend"><span><i></i> 已打卡</span></div>
         <?php if ($fitnessError !== ''): ?><p class="fitness-message" role="status"><?php echo htmlspecialchars($fitnessError, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
     </section>
 
     <section class="fitness-workout fitness-panel" aria-label="当天训练安排">
-        <div class="fitness-panel-head fitness-workout-head">
-            <div>
-                <div class="fitness-panel-label"><span>03</span> 今天的训练</div>
-                <h2 id="fitness-day-title"></h2>
-                <p id="fitness-day-meta"></p>
-            </div>
-            <span class="fitness-workout-count" id="fitness-workout-count" hidden></span>
-        </div>
         <div class="fitness-workout-content" id="fitness-workout-content" aria-label="训练动作列表" aria-live="polite" tabindex="0"></div>
     </section>
 </div>
@@ -78,7 +70,7 @@ $fitnessTuesdayExercises = [
     <div class="fitness-checkin-dialog-body" id="fitness-checkin-content" aria-live="polite"></div>
 </dialog>
 
-<template id="fitness-monday-template" data-plan-title="上肢 A——胸、肩、三头肌" data-exercise-count="<?php echo count($fitnessExercises); ?>">
+<template id="fitness-monday-template">
     <ol class="fitness-exercise-list">
         <?php foreach ($fitnessExercises as $index => $exercise): ?>
             <li class="fitness-exercise">
@@ -98,7 +90,7 @@ $fitnessTuesdayExercises = [
         <?php endforeach; ?>
     </ol>
 </template>
-<template id="fitness-tuesday-template" data-plan-title="下肢 A——腿、臀、核心" data-exercise-count="<?php echo count($fitnessTuesdayExercises); ?>">
+<template id="fitness-tuesday-template">
     <ol class="fitness-exercise-list">
         <?php foreach ($fitnessTuesdayExercises as $index => $exercise): ?>
             <li class="fitness-exercise">
