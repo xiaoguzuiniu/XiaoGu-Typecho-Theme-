@@ -140,22 +140,19 @@ try {
     $note = isset($payload['note']) && is_string($payload['note']) ? trim($payload['note']) : '';
     if (mb_strlen($note, 'UTF-8') > 2000) fitnessApiRespond(400, '文字不能超过 2000 字');
     $file = fitnessApiFile($payload);
-    $imageUrl = '';
-    if ($file !== null) {
-        if ((int) ($file['size'] ?? 0) <= 0 || (int) $file['size'] > FITNESS_API_MAX_IMAGE_BYTES) {
-            fitnessApiRespond(413, '照片不能超过 12MB');
-        }
-        $mime = isset($file['bytes'])
-            ? (new \finfo(FILEINFO_MIME_TYPE))->buffer($file['bytes'])
-            : (new \finfo(FILEINFO_MIME_TYPE))->file((string) $file['tmp_name']);
-        if (!in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'], true)) {
-            fitnessApiRespond(400, '请选择支持的图片文件');
-        }
-        $upload = \Widget\Upload::uploadHandle($file);
-        if (!is_array($upload)) throw new \RuntimeException('照片保存失败');
-        $imageUrl = \Widget\Upload::attachmentHandle(new \Typecho\Config($upload));
-        if ($imageUrl === '') throw new \RuntimeException('照片地址生成失败');
+    if ($file === null) fitnessApiRespond(400, '请上传一张健身照片');
+    if ((int) ($file['size'] ?? 0) <= 0) fitnessApiRespond(400, '照片内容为空');
+    if ((int) $file['size'] > FITNESS_API_MAX_IMAGE_BYTES) fitnessApiRespond(413, '照片不能超过 12MB');
+    $mime = isset($file['bytes'])
+        ? (new \finfo(FILEINFO_MIME_TYPE))->buffer($file['bytes'])
+        : (new \finfo(FILEINFO_MIME_TYPE))->file((string) $file['tmp_name']);
+    if (!in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif'], true)) {
+        fitnessApiRespond(400, '请选择支持的图片文件');
     }
+    $upload = \Widget\Upload::uploadHandle($file);
+    if (!is_array($upload)) throw new \RuntimeException('照片保存失败');
+    $imageUrl = \Widget\Upload::attachmentHandle(new \Typecho\Config($upload));
+    if ($imageUrl === '') throw new \RuntimeException('照片地址生成失败');
 
     $page = $db->fetchRow(
         $db->select('cid', 'authorId')->from('table.contents')
@@ -167,19 +164,16 @@ try {
     $createdAt = date('Y-m-d H:i:s', $now);
     $transaction = $db->selectDb(\Typecho\Db::WRITE);
     if ($transaction instanceof \PDO) $transaction->beginTransaction();
-    $attachmentCid = null;
-    if ($upload) {
-        $attachmentCid = $db->query($db->insert('table.contents')->rows([
-            'title' => htmlspecialchars((string) $upload['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
-            'slug' => 'fitness-photo-' . bin2hex(random_bytes(6)),
-            'created' => $now, 'modified' => $now,
-            'text' => json_encode($upload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            'order' => 0, 'authorId' => (int) $page['authorId'], 'template' => null,
-            'type' => 'attachment', 'status' => 'publish', 'password' => null,
-            'commentsNum' => 0, 'allowComment' => 0, 'allowPing' => 0, 'allowFeed' => 0,
-            'parent' => (int) $page['cid'],
-        ]));
-    }
+    $attachmentCid = $db->query($db->insert('table.contents')->rows([
+        'title' => htmlspecialchars((string) $upload['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+        'slug' => 'fitness-photo-' . bin2hex(random_bytes(6)),
+        'created' => $now, 'modified' => $now,
+        'text' => json_encode($upload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'order' => 0, 'authorId' => (int) $page['authorId'], 'template' => null,
+        'type' => 'attachment', 'status' => 'publish', 'password' => null,
+        'commentsNum' => 0, 'allowComment' => 0, 'allowPing' => 0, 'allowFeed' => 0,
+        'parent' => (int) $page['cid'],
+    ]));
     $id = $db->query($db->insert('table.fitness_checkins')->rows([
         'checkin_date' => $date,
         'note' => $note,

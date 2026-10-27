@@ -696,7 +696,7 @@ function themeConfig($form)
         null,
         null,
         _t('健身打卡快捷指令密钥'),
-        _t('设置至少 24 位随机字符并保存。iPhone 快捷指令向 /api/fitness 发送 POST，请求头填 Authorization: Bearer 此密钥；可上传 image 照片和 note 文字，均可留空。')
+        _t('设置至少 24 位随机字符并保存。iPhone 快捷指令向 /api/fitness 发送 POST，请求头填 Authorization: Bearer 此密钥；必须上传 image 照片，note 文字可留空。')
     );
     $form->addInput($fitnessApiToken);
 
