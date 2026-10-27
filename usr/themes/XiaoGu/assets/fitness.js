@@ -13,11 +13,14 @@
     const daysNode = document.getElementById('fitness-calendar-days');
     const monthTitle = document.getElementById('fitness-month-title');
     const dayTitle = document.getElementById('fitness-day-title');
+    const dayMeta = document.getElementById('fitness-day-meta');
+    const workoutCount = document.getElementById('fitness-workout-count');
     const workoutContent = document.getElementById('fitness-workout-content');
     const dialog = document.getElementById('fitness-checkin-dialog');
     const detailTitle = document.getElementById('fitness-checkin-title');
     const detailContent = document.getElementById('fitness-checkin-content');
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    let updateExerciseToggles = () => {};
 
     function dateKey(date) {
         return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
@@ -53,9 +56,36 @@
     }
 
     function renderTodayWorkout() {
-        dayTitle.textContent = `${todayDate.getMonth() + 1} 月 ${todayDate.getDate()} 日 · ${weekdays[todayDate.getDay()]}`;
-        const template = document.getElementById(todayDate.getDay() === 1 ? 'fitness-monday-template' : 'fitness-empty-template');
+        const templateIds = {1: 'fitness-monday-template', 2: 'fitness-tuesday-template'};
+        const template = document.getElementById(templateIds[todayDate.getDay()] || 'fitness-empty-template');
+        const planTitle = template.dataset.planTitle || '计划待添加';
+        const exerciseCount = Number(template.dataset.exerciseCount || 0);
+        dayTitle.textContent = `${weekdays[todayDate.getDay()]} · ${planTitle}`;
+        dayMeta.textContent = `${todayDate.getMonth() + 1} 月 ${todayDate.getDate()} 日 · 今日训练安排`;
+        workoutCount.textContent = `${exerciseCount} 个动作`;
+        workoutCount.hidden = exerciseCount === 0;
         workoutContent.replaceChildren(template.content.cloneNode(true));
+
+        const descriptions = Array.from(workoutContent.querySelectorAll('.fitness-exercise-description'));
+        updateExerciseToggles = () => {
+            descriptions.forEach((description) => {
+                const button = workoutContent.querySelector(`[aria-controls="${description.id}"]`);
+                if (button && button.getAttribute('aria-expanded') !== 'true') {
+                    button.hidden = description.scrollHeight <= description.clientHeight + 1;
+                }
+            });
+        };
+        workoutContent.querySelectorAll('.fitness-exercise-toggle').forEach((button) => {
+            button.addEventListener('click', () => {
+                const description = document.getElementById(button.getAttribute('aria-controls'));
+                const expanded = button.getAttribute('aria-expanded') === 'true';
+                button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                description.classList.toggle('is-expanded', !expanded);
+                button.textContent = expanded ? '展开要点' : '收起要点';
+                if (expanded) updateExerciseToggles();
+            });
+        });
+        requestAnimationFrame(updateExerciseToggles);
     }
 
     function showMessage(message) {
@@ -146,6 +176,7 @@
         visibleMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
         renderCalendar();
     });
+    window.addEventListener('resize', updateExerciseToggles);
 
     renderCalendar();
     renderTodayWorkout();

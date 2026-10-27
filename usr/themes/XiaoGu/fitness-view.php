@@ -19,6 +19,13 @@ $fitnessExercises = [
     ['id' => 'lateral-raise', 'name' => '哑铃侧平举', 'sets' => '2 组 × 12–20 次', 'rest' => '休息 60–90 秒', 'description' => '使用轻重量，手肘微弯，缓慢抬起。这个动作对肩部中束的训练很重要。'],
     ['id' => 'push-up', 'name' => '俯卧撑', 'sets' => '2 组 × 6–12 次', 'rest' => '休息 60–90 秒', 'description' => '如果标准俯卧撑做不到 6 次，可改为跪姿俯卧撑。身体保持一条直线，动作范围以肩部舒适为准。'],
 ];
+$fitnessTuesdayExercises = [
+    ['image' => 'fitness-tuesday-goblet-squat.png', 'name' => '哑铃高脚杯深蹲', 'sets' => '3 组 × 10–15 次', 'rest' => '休息 90–120 秒', 'description' => '双手在胸前抱住一只哑铃，稳定下蹲再站起。初期可以先用 4–8 kg。'],
+    ['image' => 'fitness-tuesday-romanian-deadlift.png', 'name' => '哑铃罗马尼亚硬拉', 'sets' => '3 组 × 10–15 次', 'rest' => '休息 90–120 秒', 'description' => '两只哑铃贴近大腿下放，臀部向后移动，背部保持稳定。先用每只 3–5 kg 熟悉髋部折叠。'],
+    ['image' => 'fitness-tuesday-glute-bridge.png', 'name' => '臀桥', 'sets' => '2 组 × 12–20 次', 'rest' => '休息 60–90 秒', 'description' => '仰卧屈膝，抬起臀部至身体基本成直线。熟练后可将轻哑铃放在髋部增加阻力。'],
+    ['image' => 'fitness-tuesday-calf-raise.png', 'name' => '提踵', 'sets' => '2 组 × 15–25 次', 'rest' => '休息 45–60 秒', 'description' => '缓慢踮起脚跟，再控制下降。先徒手练习，稳定后再手持哑铃。'],
+    ['image' => 'fitness-tuesday-dead-bug.png', 'name' => 'Dead Bug 死虫式', 'sets' => '2 组 × 每侧 8–10 次', 'rest' => '休息 45–60 秒', 'description' => '仰卧交替伸展对侧手脚，保持腰部稳定，不要为了伸得更远而塌腰。'],
+];
 ?>
 
 <div class="fitness-page" id="fitness-page">
@@ -51,10 +58,15 @@ $fitnessExercises = [
     </section>
 
     <section class="fitness-workout fitness-panel" aria-label="当天训练安排">
-        <div class="fitness-panel-head">
-            <div><div class="fitness-panel-label"><span>03</span> 今天的训练</div><h2 id="fitness-day-title"></h2></div>
+        <div class="fitness-panel-head fitness-workout-head">
+            <div>
+                <div class="fitness-panel-label"><span>03</span> 今天的训练</div>
+                <h2 id="fitness-day-title"></h2>
+                <p id="fitness-day-meta"></p>
+            </div>
+            <span class="fitness-workout-count" id="fitness-workout-count" hidden></span>
         </div>
-        <div id="fitness-workout-content" aria-live="polite"></div>
+        <div class="fitness-workout-content" id="fitness-workout-content" aria-live="polite"></div>
     </section>
 </div>
 
@@ -66,25 +78,48 @@ $fitnessExercises = [
     <div class="fitness-checkin-dialog-body" id="fitness-checkin-content" aria-live="polite"></div>
 </dialog>
 
-<template id="fitness-monday-template">
-    <div class="fitness-workout-intro"><strong>上肢 A · 胸、肩、三头肌</strong><small>以下是按你提供的示例录入的周一训练安排，之后可以继续调整。</small></div>
+<template id="fitness-monday-template" data-plan-title="上肢 A——胸、肩、三头肌" data-exercise-count="<?php echo count($fitnessExercises); ?>">
     <ol class="fitness-exercise-list">
-        <?php foreach ($fitnessExercises as $exercise): ?>
+        <?php foreach ($fitnessExercises as $index => $exercise): ?>
             <li class="fitness-exercise">
                 <div class="fitness-exercise-art" aria-hidden="true">
                     <svg viewBox="0 0 96 96" focusable="false"><use href="<?php $this->options->themeUrl('assets/fitness-exercises.svg'); ?>#<?php echo $exercise['id']; ?>"></use></svg>
                 </div>
                 <div class="fitness-exercise-copy">
-                    <h3><?php echo htmlspecialchars($exercise['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
-                    <strong><?php echo htmlspecialchars($exercise['sets'], ENT_QUOTES, 'UTF-8'); ?></strong>
-                    <span><?php echo htmlspecialchars($exercise['rest'], ENT_QUOTES, 'UTF-8'); ?></span>
-                    <p><?php echo htmlspecialchars($exercise['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                    <h3><span><?php echo sprintf('%02d', $index + 1); ?></span><?php echo htmlspecialchars($exercise['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                    <div class="fitness-exercise-stats">
+                        <strong><?php echo htmlspecialchars($exercise['sets'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                        <span><?php echo htmlspecialchars($exercise['rest'], ENT_QUOTES, 'UTF-8'); ?></span>
+                    </div>
+                    <p class="fitness-exercise-description" id="fitness-exercise-description-<?php echo $index + 1; ?>"><?php echo htmlspecialchars($exercise['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                    <button class="fitness-exercise-toggle" type="button" aria-expanded="false" aria-controls="fitness-exercise-description-<?php echo $index + 1; ?>">展开要点</button>
+                </div>
+            </li>
+        <?php endforeach; ?>
+    </ol>
+</template>
+<template id="fitness-tuesday-template" data-plan-title="下肢 A——腿、臀、核心" data-exercise-count="<?php echo count($fitnessTuesdayExercises); ?>">
+    <ol class="fitness-exercise-list">
+        <?php foreach ($fitnessTuesdayExercises as $index => $exercise): ?>
+            <li class="fitness-exercise">
+                <div class="fitness-exercise-art">
+                    <img src="<?php $this->options->themeUrl('assets/' . $exercise['image']); ?>"
+                         alt="<?php echo htmlspecialchars($exercise['name'] . '动作示范', ENT_QUOTES, 'UTF-8'); ?>" loading="lazy" decoding="async">
+                </div>
+                <div class="fitness-exercise-copy">
+                    <h3><span><?php echo sprintf('%02d', $index + 1); ?></span><?php echo htmlspecialchars($exercise['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                    <div class="fitness-exercise-stats">
+                        <strong><?php echo htmlspecialchars($exercise['sets'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                        <span><?php echo htmlspecialchars($exercise['rest'], ENT_QUOTES, 'UTF-8'); ?></span>
+                    </div>
+                    <p class="fitness-exercise-description" id="fitness-tuesday-exercise-description-<?php echo $index + 1; ?>"><?php echo htmlspecialchars($exercise['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                    <button class="fitness-exercise-toggle" type="button" aria-expanded="false" aria-controls="fitness-tuesday-exercise-description-<?php echo $index + 1; ?>">展开要点</button>
                 </div>
             </li>
         <?php endforeach; ?>
     </ol>
 </template>
 <template id="fitness-empty-template">
-    <div class="fitness-workout-empty"><span aria-hidden="true">◇</span><strong>这一天的训练计划还没添加</strong><p>先把页面搭好，具体动作和训练安排我们之后慢慢完善。</p></div>
+    <div class="fitness-workout-empty"><span aria-hidden="true">◇</span><strong>今天的训练计划还没添加</strong><p>目前已录入周一、周二训练示例，其他日期的安排可以继续补充。</p></div>
 </template>
 <script type="application/json" id="fitness-config"><?php echo json_encode($fitnessConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
