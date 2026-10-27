@@ -52,7 +52,13 @@
     }
 
     function renderTodayWorkout() {
-        const templateIds = {1: 'fitness-monday-template', 2: 'fitness-tuesday-template'};
+        const templateIds = {
+            1: 'fitness-monday-template',
+            2: 'fitness-tuesday-template',
+            3: 'fitness-wednesday-template',
+            4: 'fitness-thursday-template',
+            5: 'fitness-friday-template'
+        };
         const template = document.getElementById(templateIds[todayDate.getDay()] || 'fitness-empty-template');
         workoutContent.replaceChildren(template.content.cloneNode(true));
 
