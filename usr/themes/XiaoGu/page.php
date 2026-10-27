@@ -60,7 +60,7 @@ if ($profileSignature === '') {
     <?php $this->header(); ?>
 </head>
 
-<body>
+<body<?php if ($isFitness): ?> class="fitness-body"<?php endif; ?>>
 <div class="book-stage<?php if ($bookPanelsOpen): ?> is-book-open<?php endif; ?>" id="book-stage">
     <?php $this->need('book-panels.php'); ?>
 
