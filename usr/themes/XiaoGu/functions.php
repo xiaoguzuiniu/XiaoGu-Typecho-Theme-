@@ -42,10 +42,6 @@ function themeInit($archive)
     $action = isset($_GET['xiaogu_action']) ? $_GET['xiaogu_action'] : '';
     $cid = isset($_GET['cid']) ? (int) $_GET['cid'] : 0;
 
-    if ($action === 'fitness_status') {
-        xiaoguFitnessHandleStatus();
-    }
-
     if ($cid <= 0 || !in_array($action, ['view', 'like', 'moment_comment', 'friend_apply', 'friend_review'], true)) {
         return;
     }
@@ -694,6 +690,15 @@ function themeConfig($form)
         _t('用于保护手机记账接口。生成并保存后复制到 iOS 快捷指令。')
     );
     $form->addInput($ledgerApiToken);
+
+    $fitnessApiToken = new \Typecho\Widget\Helper\Form\Element\Text(
+        'fitnessApiToken',
+        null,
+        null,
+        _t('健身打卡快捷指令密钥'),
+        _t('设置至少 24 位随机字符并保存。iPhone 快捷指令向 /api/fitness 发送 POST，请求头填 Authorization: Bearer 此密钥；可上传 image 照片和 note 文字，均可留空。')
+    );
+    $form->addInput($fitnessApiToken);
 
     $hopeGames = new \Typecho\Widget\Helper\Form\Element\Textarea(
         'hopeGames',

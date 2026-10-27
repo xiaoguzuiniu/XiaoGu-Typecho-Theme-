@@ -1,81 +1,68 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
-function xiaoguFitnessCompletedDates(): array
+function xiaoguFitnessEnsureTable(\Typecho\Db $db): void
 {
-    $db = \Typecho\Db::get();
-    $rows = $db->fetchAll(
-        $db->select('name')->from('table.options')
-            ->where('name LIKE ? AND user = ? AND value = ?', 'xgfit:%', 0, '1')
-    );
-    $dates = [];
-    foreach ($rows as $row) {
-        $date = substr((string) $row['name'], 6);
-        if (xiaoguFitnessValidDate($date)) {
-            $dates[] = $date;
-        }
+    static $ready = false;
+    if ($ready) return;
+
+    $prefix = $db->getPrefix();
+    if (!preg_match('/^[A-Za-z0-9_]*$/', $prefix)) {
+        throw new \RuntimeException('Invalid database prefix');
     }
-    return $dates;
+    $table = '`' . $prefix . 'fitness_checkins`';
+    $db->query("CREATE TABLE IF NOT EXISTS {$table} (
+        `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `checkin_date` DATE NOT NULL,
+        `note` TEXT NOT NULL,
+        `image_url` VARCHAR(500) NOT NULL DEFAULT '',
+        `attachment_cid` BIGINT UNSIGNED DEFAULT NULL,
+        `created_at` DATETIME NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `idx_checkin_date` (`checkin_date`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4", \Typecho\Db::WRITE, '');
+    $ready = true;
 }
 
 function xiaoguFitnessValidDate(string $date): bool
 {
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $date)) {
-        return false;
-    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $date)) return false;
     $parts = array_map('intval', explode('-', $date));
     return checkdate($parts[1], $parts[2], $parts[0]);
 }
 
-function xiaoguFitnessHandleStatus(): void
+function xiaoguFitnessCompletedDates(): array
 {
-    header('Content-Type: application/json; charset=utf-8');
-    $send = static function (int $code, string $message, array $extra = []): void {
-        \Typecho\Response::getInstance()->setStatus($code);
-        http_response_code($code);
-        echo json_encode(array_merge(['success' => $code === 200, 'message' => $message], $extra), JSON_UNESCAPED_UNICODE);
-        exit;
-    };
+    $db = \Typecho\Db::get();
+    xiaoguFitnessEnsureTable($db);
+    $dates = [];
+    $rows = $db->fetchAll($db->select('checkin_date')->from('table.fitness_checkins')->group('checkin_date'));
+    foreach ($rows as $row) {
+        $date = (string) $row['checkin_date'];
+        if (xiaoguFitnessValidDate($date)) $dates[$date] = true;
+    }
+    // Preserve dates marked before photo check-ins were introduced.
+    $legacyRows = $db->fetchAll(
+        $db->select('name')->from('table.options')
+            ->where('name LIKE ? AND user = ? AND value = ?', 'xgfit:%', 0, '1')
+    );
+    foreach ($legacyRows as $row) {
+        $date = substr((string) $row['name'], 6);
+        if (xiaoguFitnessValidDate($date)) $dates[$date] = true;
+    }
+    $result = array_keys($dates);
+    sort($result);
+    return $result;
+}
 
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-        $send(405, '仅支持 POST 请求');
-    }
-    if (!\Widget\User::alloc()->pass('administrator', true)) {
-        $send(403, '只有站长可以修改健身记录');
-    }
-
-    $referer = \Typecho\Request::getInstance()->getReferer();
-    $siteHost = parse_url((string) \Widget\Options::alloc()->siteUrl, PHP_URL_HOST);
-    $refererHost = parse_url((string) $referer, PHP_URL_HOST);
-    if (!$siteHost || !$refererHost || strcasecmp($siteHost, $refererHost) !== 0) {
-        $send(403, '请求来源验证失败');
-    }
-    $submittedToken = isset($_POST['_']) && is_string($_POST['_']) ? $_POST['_'] : '';
-    $expectedToken = \Widget\Security::alloc()->getToken($referer);
-    if ($submittedToken === '' || !hash_equals($expectedToken, $submittedToken)) {
-        $send(403, '安全验证失败，请刷新页面重试');
-    }
-
-    $date = isset($_POST['date']) && is_string($_POST['date']) ? $_POST['date'] : '';
-    $completed = isset($_POST['completed']) && is_string($_POST['completed']) ? $_POST['completed'] : '';
-    if (!xiaoguFitnessValidDate($date) || !in_array($completed, ['0', '1'], true)) {
-        $send(400, '日期或完成状态不正确');
-    }
-
-    try {
-        $db = \Typecho\Db::get();
-        $name = 'xgfit:' . $date;
-        $row = $db->fetchRow(
-            $db->select('name')->from('table.options')->where('name = ? AND user = ?', $name, 0)->limit(1)
-        );
-        if ($row) {
-            $db->query($db->update('table.options')->rows(['value' => $completed])->where('name = ? AND user = ?', $name, 0));
-        } else {
-            $db->query($db->insert('table.options')->rows(['name' => $name, 'user' => 0, 'value' => $completed]));
-        }
-        $send(200, '已保存', ['date' => $date, 'completed' => $completed === '1']);
-    } catch (\Throwable $error) {
-        error_log('[fitness-status] ' . $error->getMessage());
-        $send(500, '保存失败，请稍后重试');
-    }
+function xiaoguFitnessEntriesForDate(\Typecho\Db $db, string $date): array
+{
+    xiaoguFitnessEnsureTable($db);
+    return $db->fetchAll(
+        $db->select('id', 'checkin_date', 'note', 'image_url', 'created_at')
+            ->from('table.fitness_checkins')
+            ->where('checkin_date = ?', $date)
+            ->order('created_at', \Typecho\Db::SORT_DESC)
+            ->order('id', \Typecho\Db::SORT_DESC)
+    );
 }

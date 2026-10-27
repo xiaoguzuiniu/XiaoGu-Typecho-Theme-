@@ -9,14 +9,9 @@ try {
     $fitnessError = '完成记录暂时无法读取';
     error_log('[fitness-page] ' . $error->getMessage());
 }
-$fitnessIsAdmin = \Widget\User::alloc()->pass('administrator', true);
 $fitnessConfig = [
     'completedDates' => $fitnessDates,
-    'canEdit' => $fitnessIsAdmin,
-    'endpoint' => rtrim((string) $this->options->siteUrl, '/') . '/?xiaogu_action=fitness_status',
-    'token' => $fitnessIsAdmin
-        ? \Widget\Security::alloc()->getToken(\Typecho\Request::getInstance()->getRequestUrl())
-        : '',
+    'endpoint' => rtrim((string) $this->options->siteUrl, '/') . '/api/fitness',
 ];
 $fitnessExercises = [
     ['id' => 'floor-press', 'name' => '哑铃地板卧推', 'sets' => '3 组 × 8–15 次', 'rest' => '休息 90–120 秒', 'description' => '仰卧在瑜伽垫上，双手持哑铃，缓慢下降至上臂轻触地面，再向上推起。不要用腰部反弓借力。'],
@@ -51,24 +46,25 @@ $fitnessExercises = [
         </div>
         <div class="fitness-weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
         <div class="fitness-calendar-days" id="fitness-calendar-days" aria-label="选择训练日期"></div>
-        <div class="fitness-calendar-legend"><span><i></i> 已完成</span><span>点击日期查看当天安排</span></div>
+        <div class="fitness-calendar-legend"><span><i></i> 已打卡</span><span>点击日期查看打卡详情</span></div>
         <?php if ($fitnessError !== ''): ?><p class="fitness-message" role="status"><?php echo htmlspecialchars($fitnessError, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
     </section>
 
     <section class="fitness-workout fitness-panel" aria-label="当天训练安排">
         <div class="fitness-panel-head">
-            <div><div class="fitness-panel-label"><span>03</span> 当天训练</div><h2 id="fitness-day-title"></h2></div>
-            <span class="fitness-day-status" id="fitness-day-status"></span>
+            <div><div class="fitness-panel-label"><span>03</span> 今天的训练</div><h2 id="fitness-day-title"></h2></div>
         </div>
         <div id="fitness-workout-content" aria-live="polite"></div>
-        <?php if ($fitnessIsAdmin): ?>
-            <div class="fitness-workout-footer">
-                <button type="button" class="fitness-complete-button" id="fitness-complete-button">标记这一天已完成</button>
-                <span id="fitness-save-message" role="status"></span>
-            </div>
-        <?php endif; ?>
     </section>
 </div>
+
+<dialog class="fitness-checkin-dialog" id="fitness-checkin-dialog" aria-labelledby="fitness-checkin-title">
+    <div class="fitness-checkin-dialog-head">
+        <div><span class="fitness-panel-label">打卡详情</span><h2 id="fitness-checkin-title"></h2></div>
+        <button type="button" id="fitness-checkin-close" aria-label="关闭打卡详情">×</button>
+    </div>
+    <div class="fitness-checkin-dialog-body" id="fitness-checkin-content" aria-live="polite"></div>
+</dialog>
 
 <template id="fitness-monday-template">
     <div class="fitness-workout-intro"><strong>上肢 A · 胸、肩、三头肌</strong><small>以下是按你提供的示例录入的周一训练安排，之后可以继续调整。</small></div>

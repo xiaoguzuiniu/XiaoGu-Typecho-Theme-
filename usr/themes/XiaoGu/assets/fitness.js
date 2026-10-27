@@ -6,15 +6,17 @@
     const config = JSON.parse(configNode.textContent);
     const completedDates = new Set(config.completedDates || []);
     const today = new Date();
-    let selected = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    let visibleMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    let visibleMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+    let activeDateKey = null;
+    let requestController = null;
     const daysNode = document.getElementById('fitness-calendar-days');
     const monthTitle = document.getElementById('fitness-month-title');
     const dayTitle = document.getElementById('fitness-day-title');
-    const dayStatus = document.getElementById('fitness-day-status');
     const workoutContent = document.getElementById('fitness-workout-content');
-    const completeButton = document.getElementById('fitness-complete-button');
-    const saveMessage = document.getElementById('fitness-save-message');
+    const dialog = document.getElementById('fitness-checkin-dialog');
+    const detailTitle = document.getElementById('fitness-checkin-title');
+    const detailContent = document.getElementById('fitness-checkin-content');
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
     function dateKey(date) {
@@ -41,79 +43,110 @@
             button.type = 'button';
             button.className = 'fitness-calendar-day';
             button.textContent = String(day);
-            button.setAttribute('aria-label', `${year} 年 ${month + 1} 月 ${day} 日${completedDates.has(key) ? '，已完成' : ''}`);
-            button.setAttribute('aria-pressed', dateKey(selected) === key ? 'true' : 'false');
-            if (key === dateKey(today)) button.classList.add('is-today');
+            button.setAttribute('aria-label', `${year} 年 ${month + 1} 月 ${day} 日${completedDates.has(key) ? '，已打卡' : ''}，查看打卡详情`);
+            if (key === dateKey(todayDate)) button.classList.add('is-today');
             if (completedDates.has(key)) button.classList.add('is-completed');
-            if (dateKey(selected) === key) button.classList.add('is-selected');
-            button.addEventListener('click', () => {
-                selected = date;
-                renderCalendar();
-                renderWorkout();
-            });
+            if (activeDateKey === key) button.classList.add('is-selected');
+            button.addEventListener('click', () => openCheckin(date));
             daysNode.appendChild(button);
         }
     }
 
-    function renderWorkout() {
-        const key = dateKey(selected);
-        const done = completedDates.has(key);
-        dayTitle.textContent = `${selected.getMonth() + 1} 月 ${selected.getDate()} 日 · ${weekdays[selected.getDay()]}`;
-        dayStatus.textContent = done ? '已完成' : '未完成';
-        dayStatus.classList.toggle('is-completed', done);
-        const template = document.getElementById(selected.getDay() === 1 ? 'fitness-monday-template' : 'fitness-empty-template');
+    function renderTodayWorkout() {
+        dayTitle.textContent = `${todayDate.getMonth() + 1} 月 ${todayDate.getDate()} 日 · ${weekdays[todayDate.getDay()]}`;
+        const template = document.getElementById(todayDate.getDay() === 1 ? 'fitness-monday-template' : 'fitness-empty-template');
         workoutContent.replaceChildren(template.content.cloneNode(true));
-        if (completeButton) {
-            completeButton.textContent = done ? '取消完成标记' : '标记这一天已完成';
-            completeButton.setAttribute('aria-pressed', done ? 'true' : 'false');
-            completeButton.dataset.date = key;
+    }
+
+    function showMessage(message) {
+        const paragraph = document.createElement('p');
+        paragraph.className = 'fitness-checkin-message';
+        paragraph.textContent = message;
+        detailContent.replaceChildren(paragraph);
+    }
+
+    function renderEntries(entries) {
+        detailContent.replaceChildren();
+        if (!entries.length) {
+            showMessage(completedDates.has(activeDateKey)
+                ? '这一天有旧的完成标记，暂无照片和文字记录。'
+                : '这一天还没有打卡记录。');
+            return;
         }
-        if (saveMessage) saveMessage.textContent = '';
-    }
-
-    function changeMonth(delta) {
-        visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + delta, 1);
-        renderCalendar();
-    }
-
-    document.getElementById('fitness-prev-month').addEventListener('click', () => changeMonth(-1));
-    document.getElementById('fitness-next-month').addEventListener('click', () => changeMonth(1));
-    document.getElementById('fitness-today').addEventListener('click', () => {
-        selected = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        visibleMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
-        renderCalendar();
-        renderWorkout();
-    });
-
-    if (completeButton && config.canEdit) {
-        completeButton.addEventListener('click', async () => {
-            const key = completeButton.dataset.date;
-            const shouldComplete = !completedDates.has(key);
-            completeButton.disabled = true;
-            saveMessage.textContent = '保存中…';
-            try {
-                const body = new URLSearchParams({date: key, completed: shouldComplete ? '1' : '0', _: config.token});
-                const response = await fetch(config.endpoint, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
-                    body: body.toString(),
-                });
-                const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.message || '保存失败');
-                if (shouldComplete) completedDates.add(key);
-                else completedDates.delete(key);
-                renderCalendar();
-                renderWorkout();
-                saveMessage.textContent = '已保存';
-            } catch (error) {
-                saveMessage.textContent = error.message || '保存失败，请重试';
-            } finally {
-                completeButton.disabled = false;
+        entries.forEach((entry) => {
+            const card = document.createElement('article');
+            card.className = 'fitness-checkin-entry';
+            const time = document.createElement('time');
+            time.textContent = entry.created_at || '';
+            card.appendChild(time);
+            if (entry.image_url) {
+                const image = document.createElement('img');
+                image.src = entry.thumbnail_url || entry.image_url;
+                image.alt = '这一天的健身打卡照片';
+                image.loading = 'lazy';
+                image.decoding = 'async';
+                card.appendChild(image);
             }
+            if (entry.note) {
+                const note = document.createElement('p');
+                note.textContent = entry.note;
+                card.appendChild(note);
+            } else if (!entry.image_url) {
+                const empty = document.createElement('p');
+                empty.textContent = '已完成训练';
+                card.appendChild(empty);
+            }
+            detailContent.appendChild(card);
         });
     }
 
+    async function openCheckin(date) {
+        if (requestController) requestController.abort();
+        requestController = new AbortController();
+        activeDateKey = dateKey(date);
+        renderCalendar();
+        detailTitle.textContent = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日`;
+        showMessage('正在读取打卡记录…');
+        dialog.showModal();
+        try {
+            const url = new URL(config.endpoint, window.location.href);
+            url.searchParams.set('date', activeDateKey);
+            const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store', signal: requestController.signal});
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || '读取失败');
+            renderEntries(result.data.entries || []);
+        } catch (error) {
+            if (error.name !== 'AbortError') showMessage(error.message || '读取失败，请稍后重试。');
+        }
+    }
+
+    function closeCheckin() {
+        if (requestController) requestController.abort();
+        dialog.close();
+    }
+
+    dialog.addEventListener('close', () => {
+        if (requestController) requestController.abort();
+        activeDateKey = null;
+        renderCalendar();
+    });
+    dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) closeCheckin();
+    });
+    document.getElementById('fitness-checkin-close').addEventListener('click', closeCheckin);
+    document.getElementById('fitness-prev-month').addEventListener('click', () => {
+        visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+        renderCalendar();
+    });
+    document.getElementById('fitness-next-month').addEventListener('click', () => {
+        visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+        renderCalendar();
+    });
+    document.getElementById('fitness-today').addEventListener('click', () => {
+        visibleMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+        renderCalendar();
+    });
+
     renderCalendar();
-    renderWorkout();
+    renderTodayWorkout();
 })();
