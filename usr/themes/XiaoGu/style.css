@@ -1847,6 +1847,14 @@ body.is-image-lightbox-open {
     max-width: none;
 }
 
+.fitness-layout {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.fitness-layout .page-fitness {
+    max-width: none;
+}
+
 .guestbook-comments-area {
     margin-top: 0;
     padding-top: 0;
