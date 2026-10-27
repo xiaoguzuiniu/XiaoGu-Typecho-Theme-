@@ -66,7 +66,7 @@ $fitnessTuesdayExercises = [
             </div>
             <span class="fitness-workout-count" id="fitness-workout-count" hidden></span>
         </div>
-        <div class="fitness-workout-content" id="fitness-workout-content" aria-live="polite"></div>
+        <div class="fitness-workout-content" id="fitness-workout-content" aria-label="训练动作列表" aria-live="polite" tabindex="0"></div>
     </section>
 </div>
 
