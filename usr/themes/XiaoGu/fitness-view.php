@@ -109,15 +109,16 @@ $fitnessPlans = [
             <?php foreach ($exercises as $index => $exercise): ?>
                 <?php
                 $descriptionId = 'fitness-' . $day . '-description-' . ($index + 1);
-                $imageUrl = rtrim($fitnessImageOrigin, '/') . '/' . $fitnessImageKeys[$exercise['image']]
-                    . '?imageView2/2/w/232/h/208/q/80/format/webp';
+                $fullImageUrl = rtrim($fitnessImageOrigin, '/') . '/' . $fitnessImageKeys[$exercise['image']];
+                $imageUrl = $fullImageUrl . '?imageView2/2/w/232/h/208/q/80/format/webp';
                 ?>
                 <li class="fitness-exercise">
-                    <div class="fitness-exercise-art">
+                    <button class="fitness-exercise-art" type="button" aria-label="查看<?php echo htmlspecialchars($exercise['name'], ENT_QUOTES, 'UTF-8'); ?>动作示范大图">
                         <img src="<?php echo htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8'); ?>"
+                             data-full-src="<?php echo htmlspecialchars($fullImageUrl, ENT_QUOTES, 'UTF-8'); ?>"
                              alt="<?php echo htmlspecialchars($exercise['name'] . '动作示范', ENT_QUOTES, 'UTF-8'); ?>"
                              loading="lazy" decoding="async">
-                    </div>
+                    </button>
                     <div class="fitness-exercise-copy">
                         <h3><span><?php echo sprintf('%02d', $index + 1); ?></span><?php echo htmlspecialchars($exercise['name'], ENT_QUOTES, 'UTF-8'); ?></h3>
                         <div class="fitness-exercise-stats">

@@ -1,5 +1,5 @@
 (function () {
-    const imageSelector = '.moment-content img, .page-content img, .ledger-receipt img';
+    const imageSelector = '.moment-content img, .page-content img, .ledger-receipt img, .fitness-exercise-art img';
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const mobileViewport = window.matchMedia('(max-width: 640px)');
     let lightbox = null;
@@ -92,7 +92,7 @@
     }
 
     function collectImages(image) {
-        const scope = image.closest('.moment-content, .page-content, .ledger-entry-grid');
+        const scope = image.closest('.moment-content, .page-content, .ledger-entry-grid, .fitness-exercise-list');
         if (!scope) return [image];
         return Array.from(scope.querySelectorAll('img')).filter(function (item) {
             return Boolean(imageSource(item));
@@ -273,7 +273,8 @@
     document.addEventListener('click', function (event) {
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
-        const image = event.target.closest(imageSelector);
+        const image = event.target.closest(imageSelector)
+            || event.target.closest('.fitness-exercise-art')?.querySelector('img');
         if (!image) return;
 
         event.preventDefault();

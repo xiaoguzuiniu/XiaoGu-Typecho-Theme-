@@ -94,7 +94,8 @@
 .fitness-exercise-toggle[hidden] { display: none; }
 .fitness-exercise-list { display: grid; flex: 0 0 auto; gap: 12px; padding: 0; margin: 0; list-style: none; }
 .fitness-exercise { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 18px; align-items: start; padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: var(--sidebar); }
-.fitness-exercise-art { display: grid; width: 116px; height: 104px; place-items: center; overflow: hidden; border-radius: 12px; }
+.fitness-exercise-art { display: grid; width: 116px; height: 104px; padding: 0; place-items: center; overflow: hidden; border: 0; border-radius: 12px; background: #fff; cursor: zoom-in; }
+.fitness-exercise-art:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .fitness-exercise-art img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
 .fitness-exercise-copy h3 { display: flex; align-items: baseline; gap: 9px; margin: 1px 0 8px; font-size: 15px; }
 .fitness-exercise-copy h3 span { color: var(--primary); font-size: 11px; font-weight: 700; letter-spacing: .06em; }
