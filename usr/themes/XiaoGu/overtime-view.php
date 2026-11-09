@@ -36,12 +36,10 @@ $monthUrl = static function (string $value) use ($pageUrl): string {
     return $pageUrl . (strpos($pageUrl, '?') === false ? '?' : '&') . 'month=' . rawurlencode($value);
 };
 $entries = [];
-$recordedMonths = [];
 $error = '';
 try {
     $db = \Typecho\Db::get();
     $entries = xiaoguOvertimeMonthEntries($db, $month);
-    $recordedMonths = xiaoguOvertimeRecordedMonths($db);
 } catch (\Throwable $exception) {
     $error = '加班记录暂时无法读取，请稍后重试。';
     error_log('[overtime-page] ' . $exception->getMessage());
@@ -49,8 +47,6 @@ try {
 $summary = xiaoguOvertimeMonthSummary($entries);
 $entriesByDate = [];
 foreach ($entries as $entry) $entriesByDate[(string) $entry['work_date']] = $entry;
-$monthsForSelect = array_unique(array_merge([$month, $currentMonth], $recordedMonths));
-rsort($monthsForSelect);
 $firstWeekday = (int) $monthDate->format('N') - 1;
 $daysInMonth = (int) $monthDate->format('t');
 $initialDate = $month === $currentMonth ? $today->format('Y-m-d') : ($entries[0]['work_date'] ?? $month . '-01');
@@ -69,11 +65,9 @@ $jsonOptions = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | 
 <div class="overtime-page" id="overtime-page" data-initial-date="<?php echo htmlspecialchars($initialDate, ENT_QUOTES, 'UTF-8'); ?>">
     <header class="overtime-hero">
         <div>
-            <span class="overtime-eyebrow">WORK JOURNAL</span>
             <h1>加班</h1>
             <p>每天的一点忙碌，都有迹可循。</p>
         </div>
-        <a class="overtime-back-today" href="<?php echo htmlspecialchars($monthUrl($currentMonth), ENT_QUOTES, 'UTF-8'); ?>">回到本月</a>
     </header>
 
     <section class="overtime-overview" aria-label="本月加班统计">
@@ -85,21 +79,12 @@ $jsonOptions = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | 
 
     <section class="overtime-calendar-panel" aria-label="加班日历">
         <div class="overtime-calendar-top">
-            <div><span class="overtime-eyebrow">MONTHLY RECORD</span><h2><?php echo htmlspecialchars($monthDate->format('Y 年 n 月'), ENT_QUOTES, 'UTF-8'); ?></h2></div>
+            <h2><?php echo htmlspecialchars($monthDate->format('Y 年 n 月'), ENT_QUOTES, 'UTF-8'); ?></h2>
             <div class="overtime-month-controls">
                 <a href="<?php echo htmlspecialchars($monthUrl($previousMonth), ENT_QUOTES, 'UTF-8'); ?>" aria-label="上个月">‹</a>
                 <a href="<?php echo htmlspecialchars($monthUrl($nextMonth), ENT_QUOTES, 'UTF-8'); ?>" aria-label="下个月">›</a>
             </div>
         </div>
-        <form class="overtime-history-form" method="get">
-            <label for="overtime-history-month">查看有记录的月份</label>
-            <select id="overtime-history-month" name="month">
-                <?php foreach ($monthsForSelect as $availableMonth): ?>
-                    <option value="<?php echo htmlspecialchars($availableMonth, ENT_QUOTES, 'UTF-8'); ?>"<?php if ($availableMonth === $month): ?> selected<?php endif; ?>><?php echo htmlspecialchars(str_replace('-', ' 年 ', $availableMonth) . ' 月', ENT_QUOTES, 'UTF-8'); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit">查看</button>
-        </form>
         <?php if ($error !== ''): ?><p class="overtime-error" role="status"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
         <div class="overtime-weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
         <div class="overtime-calendar-days" aria-label="选择日期查看加班详情">

@@ -2,7 +2,7 @@
 .overtime-layout .page-column { padding: 38px 44px 64px; }
 .overtime-layout .page-overtime { width: 100%; max-width: none; }
 .overtime-page { width: min(100%, 920px); margin: 0 auto; color: var(--text); }
-.overtime-hero { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 25px; }
+.overtime-hero { margin-bottom: 25px; }
 .overtime-eyebrow { color: var(--primary); font-size: 10px; font-weight: 700; letter-spacing: .14em; }
 .overtime-locked { width: min(100%, 420px); margin: min(14vh, 100px) auto; padding: 34px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 18px 40px rgba(25, 36, 90, .05); }
 .overtime-locked h1 { margin: 9px 0 8px; font-size: 28px; }
@@ -13,10 +13,8 @@
 .overtime-lock-form input { min-width: 0; padding: 11px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--sidebar); color: var(--text); font: inherit; }
 .overtime-lock-form input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .overtime-lock-form button { padding: 11px 14px; border: 0; border-radius: 9px; background: var(--primary); color: #fff; font: inherit; cursor: pointer; }
-.overtime-hero h1 { margin: 8px 0 4px; font-size: 30px; line-height: 1.3; }
+.overtime-hero h1 { margin: 0 0 4px; font-size: 30px; line-height: 1.3; }
 .overtime-hero p { margin: 0; color: var(--muted); font-size: 13px; }
-.overtime-back-today { padding: 9px 13px; border: 1px solid var(--line); border-radius: 10px; color: var(--primary); font-size: 12px; white-space: nowrap; }
-.overtime-back-today:hover { background: var(--primary-soft); }
 .overtime-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
 .overtime-overview > div { display: grid; gap: 12px; min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: var(--sidebar); }
 .overtime-overview span { color: var(--muted); font-size: 12px; }
@@ -24,15 +22,12 @@
 .overtime-overview small { color: var(--muted); font-size: 12px; font-weight: 400; }
 .overtime-calendar-panel, .overtime-detail-panel { padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
 .overtime-calendar-panel { margin-bottom: 18px; }
-.overtime-calendar-top { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
-.overtime-calendar-top h2, .overtime-detail-panel h2 { margin: 6px 0 0; font-size: 22px; }
+.overtime-calendar-top { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 18px; }
+.overtime-calendar-top h2 { margin: 0; font-size: 22px; }
+.overtime-detail-panel h2 { margin: 6px 0 0; font-size: 22px; }
 .overtime-month-controls { display: flex; gap: 7px; }
 .overtime-month-controls a { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--line); border-radius: 9px; color: var(--primary); font-size: 22px; }
 .overtime-month-controls a:hover { background: var(--primary-soft); }
-.overtime-history-form { display: flex; align-items: center; gap: 8px; margin: 18px 0 22px; }
-.overtime-history-form label { color: var(--muted); font-size: 12px; }
-.overtime-history-form select, .overtime-history-form button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--sidebar); color: var(--text); font: inherit; font-size: 12px; }
-.overtime-history-form button { color: var(--primary); cursor: pointer; }
 .overtime-error { color: #d45f68; font-size: 12px; }
 .overtime-weekdays, .overtime-calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 7px; }
 .overtime-weekdays { margin-bottom: 8px; color: var(--muted); font-size: 12px; text-align: center; }
@@ -64,5 +59,4 @@
     .overtime-weekdays, .overtime-calendar-days { gap: 4px; }
     .overtime-calendar-blank, .overtime-calendar-day { height: 45px; }
     .overtime-detail-metrics { grid-template-columns: 1fr; }
-    .overtime-history-form { flex-wrap: wrap; }
 }
