@@ -15,7 +15,6 @@ $weekdayHours = (float) $overtimeSummary['weekday_hours'];
 $weekendHours = (float) $overtimeSummary['weekend_hours'];
 $weekdayHoursDisplay = rtrim(rtrim(number_format($weekdayHours, 2, '.', ','), '0'), '.');
 $weekendHoursDisplay = rtrim(rtrim(number_format($weekendHours, 2, '.', ','), '0'), '.');
-$monthlyPayDisplay = number_format((float) $overtimeSummary['monthly_pay'], 2, '.', ',');
 $hopeGames = getXiaoGuHopeGames((string) $this->options->hopeGames);
 ?>
 
@@ -66,13 +65,9 @@ $hopeGames = getXiaoGuHopeGames((string) $this->options->hopeGames);
         <?php endif; ?>
     </section>
 
-    <section class="sidebar-block overtime-summary" aria-label="我的加班">
+    <section class="sidebar-block overtime-summary" aria-label="本月加班">
         <div class="overtime-summary-head">
-            <h2>我的加班</h2>
-            <div class="overtime-monthly-pay" aria-label="本月加班费 <?php echo htmlspecialchars($monthlyPayDisplay, ENT_QUOTES, 'UTF-8'); ?> 元">
-                <small>本月加班费</small>
-                <span>¥<?php echo htmlspecialchars($monthlyPayDisplay, ENT_QUOTES, 'UTF-8'); ?></span>
-            </div>
+            <h2>本月加班</h2>
         </div>
 
         <div class="overtime-metrics">
