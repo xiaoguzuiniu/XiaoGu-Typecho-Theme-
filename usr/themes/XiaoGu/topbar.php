@@ -94,7 +94,7 @@ if ($mobileNavName === '') {
 
         <?php if (isset($navigationPages['overtime'])): ?>
             <a class="<?php if ($this->is('page', 'overtime')): ?>is-current<?php endif; ?>"
-               href="<?php echo htmlspecialchars($navigationPages['overtime']['url'], ENT_QUOTES, 'UTF-8'); ?>"><svg class="nav-icon" aria-hidden="true"><use href="#nav-icon-overtime"></use></svg><span>加班日记</span></a>
+               href="<?php echo htmlspecialchars($navigationPages['overtime']['url'], ENT_QUOTES, 'UTF-8'); ?>"><svg class="nav-icon" aria-hidden="true"><use href="#nav-icon-overtime"></use></svg><span>加班</span></a>
         <?php endif; ?>
 
         <div class="nav-category-group<?php if ($categoryIsOpen): ?> is-open<?php endif; ?>" id="nav-category-group">

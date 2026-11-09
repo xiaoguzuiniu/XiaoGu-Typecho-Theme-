@@ -35,7 +35,7 @@ function overtimeApiRequireToken(\Typecho\Db $db): void
     $settingsRow = $db->fetchRow($db->select('value')->from('table.options')->where('name = ? AND user = ?', 'theme:' . $theme, 0)->limit(1));
     $settings = json_decode((string) ($settingsRow['value'] ?? ''), true);
     $token = is_array($settings) ? trim((string) ($settings['overtimeApiToken'] ?? '')) : '';
-    if (strlen($token) < 24) overtimeApiRespond(503, '请先在外观设置中配置加班日记接口密钥');
+    if (strlen($token) < 24) overtimeApiRespond(503, '请先在外观设置中配置加班接口密钥');
     $authorization = overtimeApiAuthorizationHeader();
     if (strncasecmp($authorization, 'Bearer ', 7) !== 0
         || !hash_equals($token, trim(substr($authorization, 7)))) {

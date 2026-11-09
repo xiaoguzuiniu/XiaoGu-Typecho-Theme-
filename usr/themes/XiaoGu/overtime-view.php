@@ -1,6 +1,28 @@
 <?php
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
+$overtimeAccess = $GLOBALS['xiaogu_overtime_access'] ?? ['allowed' => false, 'message' => '暂时无法验证访问密码，请稍后重试。'];
+if (empty($overtimeAccess['allowed'])):
+?>
+<section class="overtime-locked" aria-labelledby="overtime-locked-title">
+    <span class="overtime-eyebrow">PRIVATE PAGE</span>
+    <h1 id="overtime-locked-title">加班</h1>
+    <p>请输入访问密码，查看加班记录。</p>
+    <?php if (!empty($overtimeAccess['message'])): ?>
+        <p class="overtime-lock-message" role="alert"><?php echo htmlspecialchars((string) $overtimeAccess['message'], ENT_QUOTES, 'UTF-8'); ?></p>
+    <?php endif; ?>
+    <?php if (trim((string) $this->options->overtimePagePassword) !== ''): ?>
+        <form class="overtime-lock-form" method="post" action="<?php echo htmlspecialchars((string) $this->permalink, ENT_QUOTES, 'UTF-8'); ?>">
+            <label for="overtime-password">访问密码</label>
+            <input id="overtime-password" type="password" name="overtime_password" autocomplete="current-password" required autofocus>
+            <button type="submit">进入加班页面</button>
+        </form>
+    <?php endif; ?>
+</section>
+<?php
+return;
+endif;
+
 require_once __TYPECHO_ROOT_DIR__ . '/api/overtime-data.php';
 $today = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Shanghai'));
 $currentMonth = $today->format('Y-m');
@@ -48,7 +70,7 @@ $jsonOptions = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | 
     <header class="overtime-hero">
         <div>
             <span class="overtime-eyebrow">WORK JOURNAL</span>
-            <h1>加班日记</h1>
+            <h1>加班</h1>
             <p>每天的一点忙碌，都有迹可循。</p>
         </div>
         <a class="overtime-back-today" href="<?php echo htmlspecialchars($monthUrl($currentMonth), ENT_QUOTES, 'UTF-8'); ?>">回到本月</a>

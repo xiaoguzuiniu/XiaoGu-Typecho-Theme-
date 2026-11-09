@@ -704,10 +704,19 @@ function themeConfig($form)
         'overtimeApiToken',
         null,
         null,
-        _t('加班日记接口密钥'),
+        _t('加班接口密钥'),
         _t('设置至少 24 位随机字符并保存；调用 /api/overtime 时使用 Authorization: Bearer 此密钥。不要公开分享。')
     );
     $form->addInput($overtimeApiToken);
+
+    $overtimePagePassword = new \Typecho\Widget\Helper\Form\Element\Password(
+        'overtimePagePassword',
+        null,
+        null,
+        _t('加班页面访问密码'),
+        _t('访问加班页面时需要输入此密码；未设置时页面保持锁定。建议使用至少 12 位随机密码，并与接口密钥分开。')
+    );
+    $form->addInput($overtimePagePassword);
 
     $hopeGames = new \Typecho\Widget\Helper\Form\Element\Textarea(
         'hopeGames',

@@ -21,6 +21,19 @@ $isGallery = !$isPost && $pageSlug === 'gallery';
 $isLedger = !$isPost && $pageSlug === 'ledger';
 $isFitness = !$isPost && $pageSlug === 'fitness';
 $isOvertime = !$isPost && $pageSlug === 'overtime';
+if ($isOvertime) {
+    require_once __DIR__ . '/overtime-access.php';
+    $overtimeAccess = xiaoguOvertimePageAccess(
+        trim((string) $this->options->overtimePagePassword),
+        strncasecmp((string) $this->options->siteUrl, 'https://', 8) === 0
+            || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    );
+    $GLOBALS['xiaogu_overtime_access'] = $overtimeAccess;
+    if (!empty($overtimeAccess['justAuthenticated'])) {
+        header('Location: ' . (string) $this->permalink, true, 303);
+        exit;
+    }
+}
 $bookPanelsOpen = $isPost && (int) $this->commentsNum > 0;
 
 $profileName = trim((string) $this->options->profileName);
