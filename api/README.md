@@ -20,7 +20,9 @@
 }
 ```
 
-`date`、`weekday_hours`、`weekend_hours`、`pay` 必填，`note` 可选；时长与金额最多两位小数，时长合计必须大于 0。相同日期再次写入会覆盖该天的记录，不会重复累计。月度总数由每日记录汇总。
+`date`、`weekday_hours`、`weekend_hours`、`pay` 必填，`note` 可选；时长与金额最多两位小数。相同日期再次写入会覆盖该天的记录，不会重复累计。月度总数由每日记录汇总。
+
+没有加班时，可以正常提交两个时长和 `pay` 都为 `0`。接口会返回成功并清除该日期原有的加班记录（如有），日历不会标记这一天；响应中的 `data.cleared` 为 `true`。如果时长为 0，但 `pay` 大于 0，接口会返回 400。
 
 ```bash
 curl -X POST https://你的域名/api/overtime \

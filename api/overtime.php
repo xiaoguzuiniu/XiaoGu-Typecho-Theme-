@@ -102,15 +102,21 @@ try {
     $weekdayHours = overtimeApiAmount($payload['weekday_hours'], 'weekday_hours', 9999.99);
     $weekendHours = overtimeApiAmount($payload['weekend_hours'], 'weekend_hours', 9999.99);
     $pay = overtimeApiAmount($payload['pay'], 'pay', 99999999.99);
-    if ($weekdayHours + $weekendHours <= 0) overtimeApiRespond(400, '加班时长必须大于 0');
     $note = $payload['note'] ?? '';
     if (!is_string($note) || mb_strlen($note, 'UTF-8') > 300 || strlen($note) > 1000) overtimeApiRespond(400, '备注不能超过 300 字');
 
-    xiaoguOvertimeUpsert($db, $date, $weekdayHours, $weekendHours, $pay, trim($note));
+    $cleared = $weekdayHours + $weekendHours === 0.0;
+    if ($cleared) {
+        if ($pay !== 0.0) overtimeApiRespond(400, '加班时长为 0 时，加班费也必须为 0');
+        xiaoguOvertimeDeleteByDate($db, $date);
+    } else {
+        xiaoguOvertimeUpsert($db, $date, $weekdayHours, $weekendHours, $pay, trim($note));
+    }
     $month = substr($date, 0, 7);
     $entries = xiaoguOvertimeMonthEntries($db, $month);
     overtimeApiRespond(200, 'success', array_merge(['month' => $month], xiaoguOvertimeMonthSummary($entries), [
         'date' => $date,
+        'cleared' => $cleared,
         'entries' => array_map('overtimeApiEntry', $entries),
     ]));
 } catch (\Throwable $error) {
