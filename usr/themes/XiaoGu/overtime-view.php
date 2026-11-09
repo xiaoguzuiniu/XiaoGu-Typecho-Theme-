@@ -106,7 +106,6 @@ $jsonOptions = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | 
     </section>
 
     <section class="overtime-detail-panel" aria-live="polite" aria-label="所选日期的加班详情">
-        <span class="overtime-eyebrow">DAILY NOTE</span>
         <h2 id="overtime-detail-date"></h2>
         <div id="overtime-detail-content"></div>
     </section>

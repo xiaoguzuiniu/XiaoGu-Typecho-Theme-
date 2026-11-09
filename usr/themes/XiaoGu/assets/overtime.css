@@ -24,7 +24,7 @@
 .overtime-calendar-panel { margin-bottom: 18px; }
 .overtime-calendar-top { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 18px; }
 .overtime-calendar-top h2 { margin: 0; font-size: 22px; }
-.overtime-detail-panel h2 { margin: 6px 0 0; font-size: 22px; }
+.overtime-detail-panel h2 { margin: 0; font-size: 22px; }
 .overtime-month-controls { display: flex; gap: 7px; }
 .overtime-month-controls a { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--line); border-radius: 9px; color: var(--primary); font-size: 22px; }
 .overtime-month-controls a:hover { background: var(--primary-soft); }
