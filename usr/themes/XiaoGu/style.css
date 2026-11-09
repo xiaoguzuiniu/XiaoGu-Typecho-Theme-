@@ -3195,11 +3195,11 @@ body.is-gallery-lightbox-open {
     font-size: 12px;
 }
 
-.health-summary {
+.overtime-summary {
     position: relative;
 }
 
-.health-summary-head {
+.overtime-summary-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3207,18 +3207,18 @@ body.is-gallery-lightbox-open {
     margin-bottom: 18px;
 }
 
-.health-summary .health-summary-head h2 {
+.overtime-summary .overtime-summary-head h2 {
     margin: 0;
 }
 
-.health-metrics {
+.overtime-metrics {
     display: grid;
     position: relative;
     grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
     gap: 0;
 }
 
-.health-metrics::before {
+.overtime-metrics::before {
     width: 1px;
     height: 100%;
     grid-column: 2;
@@ -3228,11 +3228,11 @@ body.is-gallery-lightbox-open {
     content: "";
 }
 
-.health-metric {
+.overtime-metric {
     min-width: 0;
 }
 
-.health-metric:first-child {
+.overtime-metric:first-child {
     display: grid;
     width: max-content;
     max-width: 100%;
@@ -3241,7 +3241,7 @@ body.is-gallery-lightbox-open {
     justify-items: end;
 }
 
-.health-metric + .health-metric {
+.overtime-metric + .overtime-metric {
     display: grid;
     width: max-content;
     max-width: 100%;
@@ -3250,7 +3250,7 @@ body.is-gallery-lightbox-open {
     justify-items: end;
 }
 
-.health-metric-label {
+.overtime-metric-label {
     display: flex;
     margin-bottom: 8px;
     align-items: center;
@@ -3260,14 +3260,7 @@ body.is-gallery-lightbox-open {
     font-weight: 500;
 }
 
-.health-metric-label span {
-    width: 18px;
-    font-size: 15px;
-    line-height: 1;
-    text-align: center;
-}
-
-.health-metric p {
+.overtime-metric p {
     display: flex;
     margin: 0;
     align-items: baseline;
@@ -3275,7 +3268,7 @@ body.is-gallery-lightbox-open {
     color: #757ca4;
 }
 
-.health-metric strong {
+.overtime-metric strong {
     color: #3f496f;
     font-size: 22px;
     font-weight: 600;
@@ -3283,15 +3276,26 @@ body.is-gallery-lightbox-open {
     letter-spacing: -0.035em;
 }
 
-.health-metric p span {
+.overtime-metric p span {
     font-size: 10px;
 }
 
-.health-sync-time {
+.overtime-monthly-pay {
     display: inline-flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 0;
+    color: #3f496f;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.overtime-monthly-pay small {
     color: #989db4;
     font-size: 10px;
+    font-weight: 400;
 }
 
 .activity-block {
@@ -4870,17 +4874,17 @@ html.is-theme-switching .hero-bio {
     color: #c4c8d8;
 }
 
-[data-theme="dark"] .health-metric strong {
+[data-theme="dark"] .overtime-metric strong,
+[data-theme="dark"] .overtime-monthly-pay {
     color: #e1e4f0;
 }
 
-[data-theme="dark"] .health-metric-label,
-[data-theme="dark"] .health-metric p,
-[data-theme="dark"] .health-sync-time {
+[data-theme="dark"] .overtime-metric-label,
+[data-theme="dark"] .overtime-metric p {
     color: #9298b0;
 }
 
-[data-theme="dark"] .health-metrics::before {
+[data-theme="dark"] .overtime-metrics::before {
     background: rgba(183, 188, 212, 0.1);
 }
 

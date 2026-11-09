@@ -8,8 +8,8 @@
  */
 
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
-if (is_string($requestPath) && rtrim($requestPath, '/') === '/api/steps') {
-    require __DIR__ . '/api/steps.php';
+if (is_string($requestPath) && rtrim($requestPath, '/') === '/api/overtime') {
+    require __DIR__ . '/api/overtime.php';
     exit;
 }
 if (is_string($requestPath) && rtrim($requestPath, '/') === '/api/moments') {

@@ -1,20 +1,21 @@
 <?php
 $weekdays = ['日', '一', '二', '三', '四', '五', '六'];
 $activityCalendar = getSiteActivityCalendar();
-$healthRecord = null;
+$overtimeSummary = ['weekday_hours' => 0.0, 'weekend_hours' => 0.0, 'monthly_pay' => 0.0];
 
 try {
-    require_once __TYPECHO_ROOT_DIR__ . '/api/health.php';
-    $healthRecord = xiaoguHealthFindByDate(\Typecho\Db::get(), date('Y-m-d'));
+    require_once __TYPECHO_ROOT_DIR__ . '/api/overtime-data.php';
+    $currentMonth = (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Shanghai')))->format('Y-m');
+    $overtimeSummary = xiaoguOvertimeMonthSummary(xiaoguOvertimeMonthEntries(\Typecho\Db::get(), $currentMonth));
 } catch (\Throwable $error) {
-    // 首次同步前数据表可能尚未创建，侧边栏继续以未同步状态展示。
-    $healthRecord = null;
+    error_log('[overtime-sidebar] ' . $error->getMessage());
 }
 
-$healthSteps = $healthRecord ? (int) $healthRecord['steps'] : 0;
-$healthEnergy = $healthRecord ? (float) $healthRecord['active_energy'] : 0.0;
-$healthEnergyDisplay = rtrim(rtrim(number_format($healthEnergy, 2, '.', ','), '0'), '.');
-$healthSyncTime = $healthRecord ? substr((string) $healthRecord['update_time'], 0, 5) : '未同步';
+$weekdayHours = (float) $overtimeSummary['weekday_hours'];
+$weekendHours = (float) $overtimeSummary['weekend_hours'];
+$weekdayHoursDisplay = rtrim(rtrim(number_format($weekdayHours, 2, '.', ','), '0'), '.');
+$weekendHoursDisplay = rtrim(rtrim(number_format($weekendHours, 2, '.', ','), '0'), '.');
+$monthlyPayDisplay = number_format((float) $overtimeSummary['monthly_pay'], 2, '.', ',');
 $hopeGames = getXiaoGuHopeGames((string) $this->options->hopeGames);
 ?>
 
@@ -65,26 +66,23 @@ $hopeGames = getXiaoGuHopeGames((string) $this->options->hopeGames);
         <?php endif; ?>
     </section>
 
-    <section class="sidebar-block health-summary" aria-label="今日健康数据">
-        <div class="health-summary-head">
-            <h2>今日健康</h2>
-            <div class="health-sync-time" aria-label="<?php echo $healthRecord ? '本次同步时间 ' . htmlspecialchars($healthSyncTime, ENT_QUOTES, 'UTF-8') : '今日健康数据尚未同步'; ?>">
-                <?php if ($healthRecord): ?>
-                    <time datetime="<?php echo htmlspecialchars((string) $healthRecord['date'] . 'T' . (string) $healthRecord['update_time'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($healthSyncTime, ENT_QUOTES, 'UTF-8'); ?></time>
-                <?php else: ?>
-                    <span>未同步</span>
-                <?php endif; ?>
+    <section class="sidebar-block overtime-summary" aria-label="我的加班">
+        <div class="overtime-summary-head">
+            <h2>我的加班</h2>
+            <div class="overtime-monthly-pay" aria-label="本月加班费 <?php echo htmlspecialchars($monthlyPayDisplay, ENT_QUOTES, 'UTF-8'); ?> 元">
+                <small>本月加班费</small>
+                <span>¥<?php echo htmlspecialchars($monthlyPayDisplay, ENT_QUOTES, 'UTF-8'); ?></span>
             </div>
         </div>
 
-        <div class="health-metrics">
-            <div class="health-metric">
-                <div class="health-metric-label"><span aria-hidden="true">🚶</span>今日步数</div>
-                <p><strong><?php echo number_format($healthSteps); ?></strong><span>步</span></p>
+        <div class="overtime-metrics">
+            <div class="overtime-metric">
+                <div class="overtime-metric-label">日常加班</div>
+                <p><strong><?php echo htmlspecialchars($weekdayHoursDisplay, ENT_QUOTES, 'UTF-8'); ?></strong><span>h</span></p>
             </div>
-            <div class="health-metric">
-                <div class="health-metric-label"><span aria-hidden="true">🔥</span>活动消耗</div>
-                <p><strong><?php echo htmlspecialchars($healthEnergyDisplay, ENT_QUOTES, 'UTF-8'); ?></strong><span>kcal</span></p>
+            <div class="overtime-metric">
+                <div class="overtime-metric-label">周末加班</div>
+                <p><strong><?php echo htmlspecialchars($weekendHoursDisplay, ENT_QUOTES, 'UTF-8'); ?></strong><span>h</span></p>
             </div>
         </div>
     </section>
