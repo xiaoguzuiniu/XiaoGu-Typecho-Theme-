@@ -105,18 +105,14 @@ try {
     $note = $payload['note'] ?? '';
     if (!is_string($note) || mb_strlen($note, 'UTF-8') > 300 || strlen($note) > 1000) overtimeApiRespond(400, '备注不能超过 300 字');
 
-    $cleared = $weekdayHours + $weekendHours === 0.0;
-    if ($cleared) {
-        if ($pay !== 0.0) overtimeApiRespond(400, '加班时长为 0 时，加班费也必须为 0');
-        xiaoguOvertimeDeleteByDate($db, $date);
-    } else {
-        xiaoguOvertimeUpsert($db, $date, $weekdayHours, $weekendHours, $pay, trim($note));
+    if ($weekdayHours + $weekendHours === 0.0 && $pay !== 0.0) {
+        overtimeApiRespond(400, '加班时长为 0 时，加班费也必须为 0');
     }
+    xiaoguOvertimeUpsert($db, $date, $weekdayHours, $weekendHours, $pay, trim($note));
     $month = substr($date, 0, 7);
     $entries = xiaoguOvertimeMonthEntries($db, $month);
     overtimeApiRespond(200, 'success', array_merge(['month' => $month], xiaoguOvertimeMonthSummary($entries), [
         'date' => $date,
-        'cleared' => $cleared,
         'entries' => array_map('overtimeApiEntry', $entries),
     ]));
 } catch (\Throwable $error) {

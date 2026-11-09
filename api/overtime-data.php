@@ -87,9 +87,3 @@ function xiaoguOvertimeUpsert(\Typecho\Db $db, string $date, float $weekdayHours
             `pay` = VALUES(`pay`),
             `note` = VALUES(`note`)", \Typecho\Db::WRITE, '');
 }
-
-function xiaoguOvertimeDeleteByDate(\Typecho\Db $db, string $date): void
-{
-    xiaoguOvertimeEnsureTable($db);
-    $db->query($db->delete('table.overtime_daily')->where('work_date = ?', $date));
-}
