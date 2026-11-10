@@ -660,7 +660,7 @@ function themeConfig($form)
         null,
         '2000',
         _t('默认每月生活费'),
-        _t('没有单独设置某个账期时使用，单位为元；每个账期从当月 10 日开始。')
+        _t('适用于当前及未来未单独设置的账期，单位为元；修改时会保留过去账期的原金额。每个账期从当月 10 日开始。')
     );
     $form->addInput($ledgerDefaultBudget->addRule('isFloat', _t('默认生活费必须是数字')));
 
@@ -779,6 +779,52 @@ function themeConfig($form)
         _t('友链列表')
     );
     $form->addInput($friendLinks);
+}
+
+/**
+ * Typecho 保存外观设置时调用。默认生活费变更前先固定历史账期，
+ * 避免新金额追溯覆盖旧账期。
+ */
+function themeConfigHandle(array $settings, bool $isInit): void
+{
+    $db = \Typecho\Db::get();
+    $optionName = 'theme:' . basename(__DIR__);
+    $existing = $db->fetchRow($db->select('value')->from('table.options')
+        ->where('name = ? AND user = ?', $optionName, 0)->limit(1));
+
+    if (!$isInit && $existing) {
+        $previous = json_decode((string) $existing['value'], true);
+        if (is_array($previous)) {
+            $oldDefault = max(0, round((float) ($previous['ledgerDefaultBudget'] ?? 2000), 2));
+            $newDefault = max(0, round((float) ($settings['ledgerDefaultBudget'] ?? 2000), 2));
+            if ($oldDefault !== $newDefault) {
+                xiaoguLedgerEnsureTable($db);
+                $firstEntry = $db->fetchRow($db->select('spent_at')->from('table.ledger_entries')
+                    ->order('spent_at', \Typecho\Db::SORT_ASC)->limit(1));
+                $firstMonth = $firstEntry
+                    ? xiaoguLedgerPeriodMonthForDate(new \DateTimeImmutable((string) $firstEntry['spent_at']))
+                    : null;
+                $settings['ledgerMonthlyBudgets'] = xiaoguLedgerPreservePastBudgets(
+                    (string) ($previous['ledgerMonthlyBudgets'] ?? ''),
+                    (string) ($settings['ledgerMonthlyBudgets'] ?? ''),
+                    $oldDefault,
+                    xiaoguLedgerCurrentPeriodMonth(),
+                    $firstMonth
+                );
+            }
+        }
+    }
+
+    $value = json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($value === false) {
+        throw new \RuntimeException('无法保存外观设置');
+    }
+    if ($existing) {
+        $db->query($db->update('table.options')->rows(['value' => $value])
+            ->where('name = ? AND user = ?', $optionName, 0));
+    } else {
+        $db->query($db->insert('table.options')->rows(['name' => $optionName, 'value' => $value, 'user' => 0]));
+    }
 }
 
 /**

@@ -64,6 +64,34 @@ function xiaoguLedgerMonthlyBudgets($raw): array
     return $budgets;
 }
 
+/**
+ * 修改默认生活费时，把已有历史账期的旧默认金额固定下来。
+ * 明确设置或明确删除的账期仍以管理员本次提交的内容为准。
+ */
+function xiaoguLedgerPreservePastBudgets(
+    string $oldRaw,
+    string $newRaw,
+    float $oldDefault,
+    string $currentMonth,
+    ?string $firstRecordMonth
+): string {
+    $oldBudgets = xiaoguLedgerMonthlyBudgets($oldRaw);
+    $newBudgets = xiaoguLedgerMonthlyBudgets($newRaw);
+    $previousMonth = (new \DateTimeImmutable($currentMonth . '-01'))->modify('-1 month')->format('Y-m');
+    $startMonth = $firstRecordMonth !== null && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $firstRecordMonth)
+        ? min($firstRecordMonth, $previousMonth)
+        : $previousMonth;
+    $lines = trim($newRaw) === '' ? [] : preg_split('/\R/u', trim($newRaw));
+
+    for ($month = $startMonth; $month < $currentMonth; $month = (new \DateTimeImmutable($month . '-01'))->modify('+1 month')->format('Y-m')) {
+        if (!array_key_exists($month, $oldBudgets) && !array_key_exists($month, $newBudgets)) {
+            $lines[] = $month . '|' . number_format(max(0, $oldDefault), 2, '.', '');
+        }
+    }
+
+    return implode("\n", $lines);
+}
+
 function xiaoguLedgerBudgetForMonth($options, string $month): float
 {
     $defaultBudget = max(0, round((float) $options->ledgerDefaultBudget, 2));

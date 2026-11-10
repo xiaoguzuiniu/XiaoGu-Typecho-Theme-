@@ -56,7 +56,7 @@
         '  <div class="xiaogu-ledger-rows" data-ledger-category-list></div>',
         '</section>',
         '<section class="xiaogu-ledger-admin-card">',
-        '  <div class="xiaogu-ledger-admin-heading"><div><h3>指定账期生活费</h3><p>所选月份代表当月 10 日至下月 10 日前；未添加时使用默认生活费。</p></div><strong data-ledger-budget-count></strong></div>',
+        '  <div class="xiaogu-ledger-admin-heading"><div><h3>指定账期生活费</h3><p>所选月份代表当月 10 日至下月 10 日前；可在这里补录或修改历史账期金额。</p></div><strong data-ledger-budget-count></strong></div>',
         '  <div class="xiaogu-ledger-add xiaogu-ledger-budget-add"><input type="month" data-ledger-budget-month><input type="number" min="0" step="0.01" placeholder="金额" data-ledger-budget-amount><button type="button" class="btn primary" data-ledger-budget-add>添加月份</button></div>',
         '  <div class="xiaogu-ledger-rows" data-ledger-budget-list></div>',
         '</section>',
