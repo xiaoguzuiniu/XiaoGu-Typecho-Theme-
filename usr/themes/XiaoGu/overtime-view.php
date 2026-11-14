@@ -45,6 +45,8 @@ try {
     error_log('[overtime-page] ' . $exception->getMessage());
 }
 $summary = xiaoguOvertimeMonthSummary($entries);
+$overtimePayGoal = 1275.00;
+$overtimePayRemaining = max(0, round($overtimePayGoal - (float) $summary['monthly_pay'], 2));
 $entriesByDate = [];
 foreach ($entries as $entry) $entriesByDate[(string) $entry['work_date']] = $entry;
 $firstWeekday = (int) $monthDate->format('N') - 1;
@@ -73,7 +75,13 @@ $jsonOptions = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | 
     <section class="overtime-overview" aria-label="本月加班统计">
         <div><span>日常加班</span><strong><?php echo rtrim(rtrim(number_format($summary['weekday_hours'], 2, '.', ','), '0'), '.'); ?><small> h</small></strong></div>
         <div><span>周末加班</span><strong><?php echo rtrim(rtrim(number_format($summary['weekend_hours'], 2, '.', ','), '0'), '.'); ?><small> h</small></strong></div>
-        <div><span>本月加班费</span><strong><small>¥ </small><?php echo number_format($summary['monthly_pay'], 2, '.', ','); ?></strong></div>
+        <div class="overtime-pay-card">
+            <span>加班费/距目标</span>
+            <div class="overtime-pay-values" aria-label="加班费 <?php echo number_format($summary['monthly_pay'], 2, '.', ','); ?> 元，距 1275 元目标还差 <?php echo number_format($overtimePayRemaining, 2, '.', ','); ?> 元">
+                <strong><small>¥ </small><?php echo number_format($summary['monthly_pay'], 2, '.', ','); ?></strong>
+                <span><i aria-hidden="true">/</i> <strong><small>¥ </small><?php echo number_format($overtimePayRemaining, 2, '.', ','); ?></strong></span>
+            </div>
+        </div>
         <div><span>记录天数</span><strong><?php echo (int) $summary['recorded_days']; ?><small> 天</small></strong></div>
     </section>
 
