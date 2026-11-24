@@ -1,0 +1,67 @@
+name: recon-scan
+# Read-only active port discovery against authorized in-scope target (1poa origin).
+on:
+  push:
+    branches:
+      - 'probe-scan-*'
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Full TCP port discovery (chunked, <=100pps, exclude 25)
+        shell: bash
+        run: |
+          set -uo pipefail
+          TARGET=162.141.137.231
+          if ! command -v nmap >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq nmap
+          fi
+          nmap --version | head -1
+          echo "runner_ip: $(curl -s --max-time 15 https://api.ipify.org || echo NA)"
+          RAW=/tmp/raw_ports.txt; : > "$RAW"
+          for rng in 1-8000 8001-16000 16001-24000 24001-32000 32001-40000 40001-48000 48001-56000 56001-64000 64001-65535; do
+            echo "### CHUNK $rng start $(date -u +%H:%M:%S)"
+            nmap -sT -Pn -n --exclude-ports 25 --min-rate 100 --max-rate 100 \
+                 --max-retries 1 --initial-rtt-timeout 400ms --max-rtt-timeout 900ms \
+                 --host-timeout 420s -p "$rng" --open -oG - "$TARGET" 2>/dev/null \
+              | grep -aE "^Host:.*Ports:" | sed -E 's#^.*Ports: ##' >> "$RAW" || true
+            echo "### CHUNK $rng done $(date -u +%H:%M:%S) rawlines=$(wc -l < "$RAW")"
+          done
+          # Build sorted unique "port open service" list from greppable "22/open/tcp//ssh///" tokens
+          python3 - "$RAW" <<'PY'
+import sys,re
+seen={}
+for line in open(sys.argv[1],errors='ignore'):
+    for tok in line.strip().split(','):
+        tok=tok.strip()
+        m=re.match(r'(\d+)/open/(tcp|udp)//([^/]*)',tok)
+        if m:
+            p=int(m.group(1)); proto=m.group(2); svc=m.group(3) or '?'
+            seen[p]=(proto,svc)
+ports=sorted(seen)
+with open('/tmp/open_ports.txt','w') as f:
+    for p in ports:
+        f.write(f"{p}/tcp {seen[p][1]}\n")
+print("OPENPORTCOUNT", len(ports))
+PY
+          echo "=====OPENPORTS====="
+          cat /tmp/open_ports.txt || true
+      - name: Service/version detection on discovered ports
+        shell: bash
+        run: |
+          set -uo pipefail
+          TARGET=162.141.137.231
+          PLIST=$(awk '{print $1}' /tmp/open_ports.txt | cut -d/ -f1 | sort -n -u | paste -sd, -)
+          echo "svc_ports=$PLIST"
+          if [ -n "$PLIST" ]; then
+            nmap -sT -sV -Pn -n --version-intensity 7 --max-rate 100 --host-timeout 900s \
+                 -p "$PLIST" "$TARGET" 2>/dev/null | tee /tmp/svc.txt
+          else
+            echo "NO_OPEN_PORTS"
+          fi
+          echo "=====SERVICE====="
+          cat /tmp/svc.txt 2>/dev/null || true
+          echo "=====DONE====="
