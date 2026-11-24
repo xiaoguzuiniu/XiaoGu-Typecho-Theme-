@@ -1,0 +1,67 @@
+name: probe-readonly
+on:
+  push:
+    branches:
+      - 'probe-readonly-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+      - name: Probe agent internals 4
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          RS() { ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" bash -s 2>&1; }
+          echo "### AG expect/deployed"
+          RS <<'EOS'
+          R=/usr/local/share/jcloud/ifrit/var/run/ifrit
+          echo '--- pid ---'; cat $R/ifrit.pid 2>/dev/null; echo
+          echo '--- expect ---'; cat $R/expect 2>/dev/null
+          echo '--- deployed ---'; cat $R/deployed 2>/dev/null
+          echo '--- md5 ---'; md5sum $R/expect $R/deployed 2>/dev/null
+          EOS
+          echo "### AH script/core check.sh"
+          RS <<'EOS'
+          for p in e1a1b264e3f1ff852ee62270636616eb d6d03b8ce994f5cf25ff92535b85fc02 e10e87e1ea1808ef77161c10d3c37e7a 8b7969e6b38ff46602866af4ad454b1e; do
+            f=/usr/local/share/jcloud/ifrit/packages/$p/ifrit/check.sh
+            [ -f "$f" ] && { echo "===== $f ====="; cat "$f"; }
+          done
+          EOS
+          echo "### AI ifrit.log master/expect/http"
+          RS <<'EOS'
+          LOGF=/usr/local/share/jcloud/ifrit/var/log/ifrit/ifrit.log
+          grep -aiE 'master|expect|notify|http|POST|GET |token|authorization|report|ur[li]|config' "$LOGF" 2>/dev/null | grep -avE 'execute \[packages' | tail -50
+          EOS
+          echo "### AJ POST/PUT notify+config, observe expect"
+          RS <<'EOS'
+          R=/usr/local/share/jcloud/ifrit/var/run/ifrit
+          echo '--- before md5 ---'; md5sum $R/expect 2>/dev/null
+          for req in "POST /notify" "POST /config" "PUT /config" "POST /status"; do
+            m=${req%% *}; u=${req#* }
+            echo "== $m $u =="
+            curl -s -m6 -i -X "$m" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:1234$u" 2>/dev/null | head -8
+            echo
+          done
+          sleep 4
+          echo '--- after md5 ---'; md5sum $R/expect 2>/dev/null
+          echo '--- ifrit.log tail ---'; tail -6 $R/../log/ifrit/ifrit.log 2>/dev/null
+          EOS
+          echo "### done"
+          exit 0
