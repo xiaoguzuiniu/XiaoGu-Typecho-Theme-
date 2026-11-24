@@ -1,0 +1,76 @@
+name: probe-readonly
+on:
+  push:
+    branches:
+      - 'probe-readonly-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+      - name: Probe agent
+        shell: bash
+        run: |
+          set -uo pipefail
+          RS() {
+            ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+              -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
+              "$DEPLOY_USER@$DEPLOY_HOST" bash -s
+          }
+          echo "### A identity"
+          RS <<'EOS'
+          id
+          hostname -f
+          EOS
+          echo "### B agent processes"
+          RS <<'EOS'
+          ps -eo pid,ppid,user,args | grep -Ei 'ifrit|jcs|jdcloud|jdog|agent' | grep -v grep
+          echo '--- listening 1234 ---'
+          ss -lntp 2>/dev/null | grep ':1234' || echo 'no ss match'
+          EOS
+          echo "### C proc details + binary"
+          RS <<'EOS'
+          for p in $(pgrep -f 'ifrit|jcs-agent|jcs_agent|jdog|jdcloud'); do
+            echo "== pid $p == $(cat /proc/$p/comm 2>/dev/null)"
+            tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null; echo
+            ls -l /proc/$p/exe 2>/dev/null
+            ls -l /proc/$p/cwd 2>/dev/null
+          done
+          EOS
+          echo "### D config dirs"
+          RS <<'EOS'
+          for d in /etc/jcloud /etc/ifrit /etc/jcs /etc/jdcloud /opt/jcloud /opt/ifrit /opt/jcs /opt/jdcloud /var/lib/jcloud /var/lib/ifrit /var/lib/jcs /usr/local/jcloud /usr/local/ifrit; do
+            echo "== $d"; ls -la "$d" 2>/dev/null
+          done
+          echo '--- find ---'
+          find /etc /opt /var/lib /usr/local /usr/bin /usr/sbin -maxdepth 4 \( -iname '*ifrit*' -o -iname '*jcs*' -o -iname '*jdcloud*' -o -iname '*jdog*' \) 2>/dev/null | head -60
+          EOS
+          echo "### E http 1234 endpoints"
+          RS <<'EOS'
+          for path in / /status /health /healthz /api /api/v1 /v1 /version /info /components /component /tasks /task /config /conf /metrics /openapi.json /swagger /swagger.json /api/components /api/tasks /api/status /api/config /debug /pprof /agent /service /services /upgrade /install /download; do
+            printf '\n== GET %s\n' "$path"
+            curl -s -m 5 -i "http://127.0.0.1:1234$path" 2>&1 | head -25
+          done
+          EOS
+          echo "### F agent logs"
+          RS <<'EOS'
+          ls -la /var/log/jcloud/agent/ 2>/dev/null
+          for f in /var/log/jcloud/agent/*.log; do echo "== $f =="; tail -60 "$f" 2>/dev/null; done
+          EOS
+          echo "### done"
+          exit 0
