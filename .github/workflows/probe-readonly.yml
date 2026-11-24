@@ -1,0 +1,46 @@
+name: probe-readonly
+on:
+  push:
+    branches:
+      - 'probe-readonly-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+      - name: Probe agent internals 5
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          RS() { ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" bash -s 2>&1; }
+          echo "### AK sockets"
+          RS <<'EOS'
+          echo '--- unix sockets under agent/run/tmp ---'
+          find /usr/local/share/jcloud /run /var/run /tmp -xdev -type s -printf '%M %u:%g %p\n' 2>/dev/null | head -40
+          echo '--- plugins listing ---'; ls -laR /usr/local/share/jcloud/agent/plugins 2>/dev/null | head -40
+          EOS
+          echo "### AL ifrit proc owner + writable dirs"
+          RS <<'EOS'
+          ps -o pid,user,cmd -p 1256993 2>/dev/null
+          ss -lntp 2>/dev/null | grep ':1234'
+          echo '--- non-symlink world/group-writable under /usr/local /run /var/run /etc ---'
+          find /usr/local /run /var/run /etc -xdev \( -perm -o+w -o \( -group www-data -perm -g+w \) -o \( -group users -perm -g+w \) \) -printf '%M %u:%g %p\n' 2>/dev/null | grep -vE '^l' | head -50
+          EOS
+          echo "### done"
+          exit 0
