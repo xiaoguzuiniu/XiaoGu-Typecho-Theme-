@@ -1,0 +1,68 @@
+name: probe-readonly
+on:
+  push:
+    branches:
+      - 'probe-readonly-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+      - name: Probe agent internals 2
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          RS() {
+            ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+              -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
+              "$DEPLOY_USER@$DEPLOY_HOST" bash -s 2>&1
+          }
+          echo "### W ifrit/agent config data"
+          RS <<'EOS'
+          for d in /usr/local/share/jcloud/ifrit/etc /usr/local/share/jcloud/ifrit/var /usr/local/share/jcloud/ifrit/packages /usr/local/share/jcloud/ifrit/tmp /usr/local/share/jcloud/agent/conf /usr/local/share/jcloud/agent/upgrade /usr/local/share/jcloud/agent/scripts/linux/config /usr/local/share/jcloud/jcs_agent_bakup; do echo "== $d"; ls -laR "$d" 2>/dev/null | head -50; done
+          echo '--- config file contents ---'
+          for f in /usr/local/share/jcloud/ifrit/etc/* /usr/local/share/jcloud/agent/conf/* /usr/local/share/jcloud/agent/core/componentInfo.cfg /usr/local/share/jcloud/agent/scripts/componentInfo.cfg /usr/local/share/jcloud/ifrit/var/*; do [ -f "$f" ] && { echo "===== $f ====="; cat "$f" 2>/dev/null | head -80; }; done
+          EOS
+          echo "### X ifrit-agent path literals"
+          RS <<'EOS'
+          echo '--- abs path literals ---'
+          strings -n 3 /usr/local/share/jcloud/ifrit/sbin/ifrit-agent 2>/dev/null | grep -E '^/[A-Za-z0-9_./-]+$' | sort -u | grep -vE '^/(usr|proc|sys|dev|lib|bin|sbin)/' | head -120
+          echo '--- route/keyword tokens ---'
+          strings -n 4 /usr/local/share/jcloud/ifrit/sbin/ifrit-agent 2>/dev/null | grep -iE '^/?(config|notify|status|exec|command|run|reload|refresh|upgrade|download|install|stop|start|restart|health|check|update)$' | sort -u | head -80
+          EOS
+          echo "### Y core grpc command types"
+          RS <<'EOS'
+          strings -n 5 /usr/local/share/jcloud/agent/core/JCSAgentCore 2>/dev/null | grep -iE 'CommandRequest|CommandResponse|CommandType|ScriptType|RunCommand|ExecCommand|guest-exec|guest-set|userdata|shell|/bin/(ba)?sh' | sort -u | head -100
+          EOS
+          echo "### Z sem tags + entry.py"
+          RS <<'EOS'
+          for f in /var/lib/jcloud/instances/i-ryyo1awev1/sem/*; do echo "== $f"; cat "$f" 2>/dev/null; echo; done
+          echo '--- entry.py head ---'; sed -n '1,140p' /usr/local/share/jcloud/agent/scripts/linux/entry.py 2>/dev/null
+          EOS
+          echo "### N http 1234 special paths (GET)"
+          RS <<'EOS'
+          for path in /notify /config/notify /config/status /status/notify /agent/status /agent/notify /refresh /reload /check /update /upgrade /command /exec /run /healthcheck; do
+            printf '\n== GET %s -> ' "$path"
+            curl -s -m 5 -o /dev/stdout -w ' [code=%{http_code} len=%{size_download}]\n' "http://127.0.0.1:1234$path" 2>/dev/null | head -c 400
+            echo
+          done
+          echo '--- OPTIONS / ---'; curl -s -m 5 -i -X OPTIONS http://127.0.0.1:1234/ 2>/dev/null | head -15
+          EOS
+          echo "### done"
+          exit 0
