@@ -1,0 +1,151 @@
+name: recon-scan-43
+# Read-only active port discovery against authorized in-scope target 43.243.192.97 (task 15 asset 161788).
+on:
+  push:
+    branches:
+      - 'probe43-*'
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Full TCP port discovery (chunked, <=100pps, exclude 25)
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          TARGET=43.243.192.97
+          if ! command -v nmap >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq nmap
+          fi
+          nmap --version | head -1
+          echo "runner_ip: $(curl -s --max-time 15 https://api.ipify.org || echo NA)"
+          echo "utc: $(date -u +%FT%TZ)"
+          RAW=/tmp/raw_ports.txt; : > "$RAW"
+          for rng in 1-8000 8001-16000 16001-24000 24001-32000 32001-40000 40001-48000 48001-56000 56001-64000 64001-65535; do
+            echo "### CHUNK $rng start $(date -u +%H:%M:%S)"
+            nmap -sT -Pn -n --exclude-ports 25 --min-rate 100 --max-rate 100 \
+                 --max-retries 1 --initial-rtt-timeout 400ms --max-rtt-timeout 900ms \
+                 --host-timeout 300s -p "$rng" --open -oG - "$TARGET" 2>/dev/null \
+              | grep -aE "^Host:.*Ports:" | sed -E 's#^.*Ports: ##' >> "$RAW" || true
+            echo "### CHUNK $rng done $(date -u +%H:%M:%S) rawlines=$(wc -l < "$RAW")"
+          done
+          tr ',' '\n' < "$RAW" | sed -E 's#^[[:space:]]*([0-9]+)/open/(tcp|udp)//([^/]*).*#\1/tcp\t\3#' \
+            | grep -E '^[0-9]+/tcp' | sort -t/ -k1,1n -u > /tmp/open_ports.txt || true
+          echo "OPENPORTCOUNT $(wc -l < /tmp/open_ports.txt)"
+          echo "=====OPENPORTS====="
+          cat /tmp/open_ports.txt || true
+      - name: Service/version detection on discovered ports
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          TARGET=43.243.192.97
+          PLIST=$(cut -d/ -f1 /tmp/open_ports.txt 2>/dev/null | sort -n -u | paste -sd, -)
+          echo "svc_ports=$PLIST"
+          if [ -n "$PLIST" ]; then
+            nmap -sT -sV -Pn -n --version-intensity 7 --max-rate 100 --host-timeout 900s --exclude-ports 25 \
+                 -p "$PLIST" "$TARGET" 2>/dev/null | tee /tmp/svc.txt
+          else
+            echo "NO_OPEN_PORTS"
+          fi
+          echo "=====SERVICE_DONE====="
+      - name: TLS certificate fingerprint per open port
+        shell: bash
+        run: |
+          set +e
+          TARGET=43.243.192.97
+          PLIST=$(cut -d/ -f1 /tmp/open_ports.txt 2>/dev/null | sort -n -u)
+          for p in $PLIST; do
+            echo "--- tls $p ---"
+            echo | timeout 8 openssl s_client -connect "$TARGET:$p" -servername "$TARGET" 2>/dev/null \
+              | openssl x509 -noout -subject -issuer -dates 2>/dev/null | head -6
+          done
+          echo "=====TLS_DONE====="
+      - name: Application fingerprint and unauthenticated surface checks
+        shell: bash
+        run: |
+          set +e
+          python3 - <<'PY' | tee /tmp/fp.txt
+          import socket, ssl, json, re, urllib.request, urllib.error
+          TARGET="43.243.192.97"
+          ports=[]
+          try:
+            for line in open('/tmp/open_ports.txt'):
+              line=line.strip()
+              if not line: continue
+              ports.append(int(line.split('/')[0]))
+          except FileNotFoundError:
+            pass
+          print("FP_PORTS", ports)
+          def raw(port, payload=b"", timeout=3.0):
+              s=socket.socket(); s.settimeout(timeout)
+              try:
+                  s.connect((TARGET, port))
+                  if payload:
+                      s.sendall(payload)
+                  out=b""
+                  try:
+                      while len(out)<1024:
+                          d=s.recv(512)
+                          if not d: break
+                          out+=d
+                          if len(d)<512: break
+                  except socket.timeout:
+                      pass
+                  s.close(); return out
+              except Exception as e:
+                  try: s.close()
+                  except Exception: pass
+                  return repr(e).encode()
+          def http(port, scheme, path="/", timeout=6):
+              url=f"{scheme}://{TARGET}:{port}{path}"
+              ctx=ssl.create_default_context(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE
+              req=urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0","Host":TARGET,"Accept":"*/*"})
+              try:
+                  r=urllib.request.urlopen(req,timeout=timeout,context=ctx)
+                  return r.status, dict(r.getheaders()), r.read(3000).decode('utf-8','replace')
+              except urllib.error.HTTPError as e:
+                  try: body=e.read(3000).decode('utf-8','replace')
+                  except Exception: body=""
+                  return e.code, dict(e.headers), body
+              except Exception as e:
+                  return None, {}, repr(e)
+          def title(body):
+              m=re.search(r'<title[^>]*>(.*?)</title>', body, re.S|re.I)
+              return (m.group(1).strip()[:120] if m else "")
+          for p in ports:
+              info={"port":p}
+              if p==6379:
+                  b=raw(p, b"PING\r\n")
+                  info["redis_ping"]=b[:200].decode('utf-8','replace')
+                  if b.startswith(b"+PONG"):
+                      info["redis_noauth"]=True
+                      info["redis_info"]=raw(p, b"INFO server\r\n", 4)[:900].decode('utf-8','replace')
+              elif p==3306:
+                  b=raw(p)
+                  info["mysql_banner"]=b[:120].decode('latin-1','replace')
+              else:
+                  b=raw(p)
+                  info["banner_raw"]=b[:200].decode('latin-1','replace')
+                  for scheme in ("http","https"):
+                      st,h,body=http(p, scheme, "/")
+                      if st is not None:
+                          info["http"]={"scheme":scheme,"status":st,"server":h.get("Server",""),
+                                        "ctype":h.get("Content-Type",""),"location":h.get("Location",""),
+                                        "title":title(body),"body_head":body[:400]}
+                          break
+                  for path in ("/version","/json/version","/json/list","/login","/pma/","/phpmyadmin/","/api/v1/status"):
+                      st,h,body=http(p,"http",path,5)
+                      if st is not None and st!=404:
+                          info.setdefault("probes",{})[path]={"status":st,"server":h.get("Server",""),
+                                                             "title":title(body),"body_head":body[:300]}
+                          if path in ("/json/list","/json/version") and body.strip().startswith(("{","[")):
+                              info["node_inspector_body"]=body[:800]
+                          if path=="/version" and "ApiVersion" in body:
+                              info["docker_api"]=body[:300]
+              print("FP "+json.dumps(info, ensure_ascii=False)[:2500], flush=True)
+          print("=====FP_DONE=====")
+          PY
