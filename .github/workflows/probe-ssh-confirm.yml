@@ -1,0 +1,42 @@
+name: probe-ssh-confirm
+# Confirm deploy-key publickey result on 158.178.147.50:22 incl. Oracle default user opc,
+# and control on 111. Read-only, port 22 only, key never printed, no TCP25.
+on:
+  push:
+    branches:
+      - 'probe-ssh-exit-diag-*'
+permissions:
+  contents: read
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+    steps:
+      - name: setup
+        shell: bash
+        run: |
+          set -uo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/id_deploy"
+          chmod 600 "$HOME/.ssh/id_deploy"
+          ssh-keygen -y -f "$HOME/.ssh/id_deploy" >/dev/null 2>&1 && echo KEYPARSE_OK || echo KEYPARSE_FAIL
+          echo "runner_ip $(curl -s --max-time 10 https://api.ipify.org || true)"
+      - name: confirm
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          K="$HOME/.ssh/id_deploy"
+          OPT="-i $K -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=12 -o NumberOfPasswordPrompts=0 -o PreferredAuthentications=publickey"
+          echo "=== control deploy@111"
+          out=$(timeout 25 ssh $OPT deploy@111.228.18.176 'echo READY; id -un' 2>&1); rc=$?
+          echo "111 rc=$rc :: $(printf '%s' "$out" | grep -E 'READY|Permission denied|denied' | head -2 | tr '\n' '|')"
+          echo "=== 158.178.147.50:22 deploy-key per user (5 named + opc)"
+          for u in root deploy xiaogu ubuntu admin opc; do
+            out=$(timeout 30 ssh $OPT "$u@158.178.147.50" 'echo READY; id -un' 2>&1); rc=$?
+            line=$(printf '%s' "$out" | grep -E 'READY|Permission denied|denied|Host key|timed out|refused' | tail -1)
+            echo "158 $u rc=$rc :: $line"
+          done
+          echo "=== done"
