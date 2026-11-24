@@ -1,0 +1,39 @@
+name: probe-43-proto
+# Read-only client-first protocol identification against authorized in-scope target
+# 43.243.192.97 high ports (task 15 asset 161788). No TCP/25 traffic is generated anywhere.
+on:
+  push:
+    branches:
+      - 'probe43proto-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Runner egress fingerprint
+        shell: bash
+        run: |
+          echo "utc: $(date -u +%FT%TZ)"
+          echo "runner_ip: $(curl -s --max-time 12 https://api.ipify.org || echo NA)"
+          python3 -V
+      - name: Client-first protocol probe (socks4/5, http, frp, tls-sni, vless, h2, rdp, redis, openvpn)
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          ls -l probe43proto.py
+          python3 probe43proto.py 2>&1 | tee /tmp/probe.out
+          RC=${PIPESTATUS[0]}
+          echo "=====PROBE_EXIT $RC====="
+          echo "lines=$(wc -l < /tmp/probe.out)"
+      - name: Upload raw probe output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe43proto-out
+          path: /tmp/probe.out
+          retention-days: 1
