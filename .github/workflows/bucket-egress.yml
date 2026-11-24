@@ -1,0 +1,22 @@
+name: bucketegress
+on:
+  push:
+    branches:
+      - 'egresstest-*'
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: probe
+        env:
+          COMBO: 'administrator|6Fwb-NyFHZ6Fl[LTZqhJ'
+          PWMODE: egress-opsocks
+          EGRESS_PROXY: 'socks5h://ce5755e2:6ee609f02061f29dee296314@2.27.109.115:26265'
+        run: |
+          set +e
+          python3 bucketprobe/runner_probe.py 2>&1 | sed -n '1,200p'
