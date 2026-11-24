@@ -1,0 +1,67 @@
+name: probe-readonly
+on:
+  push:
+    branches:
+      - 'probe-readonly-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+      - name: Probe agent internals
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          RS() {
+            ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+              -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
+              "$DEPLOY_USER@$DEPLOY_HOST" bash -s 2>&1
+          }
+          echo "### P writable paths (deploy/www-data/users/o+w)"
+          RS <<'EOS'
+          find /usr/local/share/jcloud /var/lib/jcloud /etc/jdcloud /etc/init.d /opt -xdev \( -perm -o+w -o \( -group www-data -perm -g+w \) -o \( -group users -perm -g+w \) -o -uid 1001 \) -printf '%M %u:%g %p\n' 2>/dev/null | head -100
+          EOS
+          echo "### Q tree /usr/local/share/jcloud"
+          RS <<'EOS'
+          for d in /usr/local/share/jcloud /usr/local/share/jcloud/agent /usr/local/share/jcloud/agent/core /usr/local/share/jcloud/agent/plugins /usr/local/share/jcloud/agent/scripts /usr/local/share/jcloud/agent/scripts/linux /usr/local/share/jcloud/agent/scripts/linux/jcs_engine /usr/local/share/jcloud/ifrit /usr/local/share/jcloud/ifrit/sbin; do echo "== $d"; ls -la "$d" 2>/dev/null; done
+          EOS
+          echo "### R /var/lib/jcloud tree"
+          RS <<'EOS'
+          find /var/lib/jcloud -maxdepth 5 -printf '%M %u:%g %8s %p\n' 2>/dev/null | head -120
+          echo '--- instance-tag ---'; cat /var/lib/jcloud/instance-tag 2>/dev/null
+          EOS
+          echo "### S /etc/jdcloud + unit/init files"
+          RS <<'EOS'
+          echo '--- /etc/jdcloud ---'; ls -la /etc/jdcloud 2>/dev/null; find /etc/jdcloud -maxdepth 3 -type f 2>/dev/null | while read f; do echo "== $f"; cat "$f" 2>/dev/null; done | head -120
+          for f in /etc/systemd/system/multi-user.target.wants/jcs-agent-core.service /etc/systemd/system/multi-user.target.wants/ifritd.service /etc/systemd/system/multi-user.target.wants/jdcloudservice.service /etc/systemd/system/multi-user.target.wants/jcs-entry.service /etc/init.d/ifritd /etc/init.d/jdog_service; do echo "===== $f ====="; cat "$f" 2>/dev/null; done
+          EOS
+          echo "### T strings JCSAgentCore"
+          RS <<'EOS'
+          strings -n 6 /usr/local/share/jcloud/agent/core/JCSAgentCore 2>/dev/null | grep -iE '(/config|/status|/exec|/command|/cmd|/run|/script|/task|http://|https://|unix://|/api/|userdata|listen|:1234|token|secret|uuid)' | sort -u | head -150
+          EOS
+          echo "### U strings ifrit-agent"
+          RS <<'EOS'
+          strings -n 6 /usr/local/share/jcloud/ifrit/sbin/ifrit-agent 2>/dev/null | grep -iE '(GET|POST|/config|/status|/exec|/command|/run|/task|http|listen|:1234|md5|account|required|remove|upgrade|install|download|config|exec\.|cmd)' | sort -u | head -150
+          EOS
+          echo "### V strings ifrit-supervise"
+          RS <<'EOS'
+          strings -n 6 /usr/local/share/jcloud/ifrit/sbin/ifrit-supervise 2>/dev/null | grep -iE '(http|listen|:1234|exec|command|config|service|run)' | sort -u | head -80
+          EOS
+          echo "### done"
+          exit 0
