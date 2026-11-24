@@ -24,31 +24,52 @@ jobs:
           printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
-          ssh-keygen -y -f "$HOME/.ssh/deploy_key" > /dev/null && echo "key-ok"
-      - name: Probe read-only
+      - name: Probe read-only 2
         shell: bash
         run: |
           set -uo pipefail
-          exec > >(tee probe.out) 2>&1
-          RC() {
+          exec > >(tee probe2.out) 2>&1
+          RS() {
             ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
               -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
-              "$DEPLOY_USER@$DEPLOY_HOST" "$1"
-            echo "[rc=$?]"
+              "$DEPLOY_USER@$DEPLOY_HOST" bash -s
           }
-          echo "### 1 identity"
-          RC "id; whoami; hostname; uname -a; date -u"
-          echo "### 2 appdir"
-          RC "ls -la /var/www/xiaoguyouqu | head -60"
-          echo "### 3 config"
-          RC "cat /var/www/xiaoguyouqu/config.inc.php"
-          echo "### 4 sudo"
-          RC "sudo -n -l"
+          echo "### A identity"
+          RS <<'EOS'
+          hostname -I
+          hostname -f
+          ip -4 -o addr show scope global | head -5
+          EOS
+          echo "### B www"
+          RS <<'EOS'
+          ls -la /var/www/
+          find /var/www -maxdepth 3 \( -name 'config.inc.php' -o -name 'wp-config.php' -o -name '.env' \) 2>/dev/null | head -20
+          EOS
+          echo "### C nginx"
+          RS <<'EOS'
+          ls -la /etc/nginx/sites-enabled/ 2>&1 | head -20
+          grep -rh 'server_name' /etc/nginx/sites-enabled/ 2>&1 | head -30
+          EOS
+          echo "### D mysql"
+          RS <<'EOS'
+          command -v mysql || echo no-mysql-client
+          mysql -h127.0.0.1 -P3306 -utypecho -p'6Fwb-NyFHZ6Fl[LTZqhJ' -e 'show databases' 2>&1 | head -20
+          EOS
+          echo "### E typecho users"
+          RS <<'EOS'
+          mysql -h127.0.0.1 -P3306 -utypecho -p'6Fwb-NyFHZ6Fl[LTZqhJ' -D typecho -e 'select uid,name,screenName,mail,password,activated from typecho_users' 2>&1 | head -20
+          EOS
+          echo "### F 1poa refs"
+          RS <<'EOS'
+          grep -rl '1poa' /var/www /opt /srv /etc/nginx 2>/dev/null | head -10
+          ls -la /opt /srv 2>&1 | head -20
+          EOS
           echo "### done"
+          exit 0
       - name: Upload probe output
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: probe-out
-          path: probe.out
+          name: probe2-out
+          path: probe2.out
           if-no-files-found: warn
