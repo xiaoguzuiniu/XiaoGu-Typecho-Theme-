@@ -1,0 +1,20 @@
+name: opsereval
+on:
+  push:
+    branches:
+      - 'opsreval-*'
+permissions:
+  contents: read
+# Single job, strictly serial. Each combo egresses through a DISTINCT operator
+# VPS SOCKS (real independent login bucket), NOT Azure egress. HV verify paced.
+jobs:
+  serial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: serial-eval
+        run: |
+          set +e
+          python3 bucketprobe/campaign_driver.py 2>&1 | sed -n '1,300p'
