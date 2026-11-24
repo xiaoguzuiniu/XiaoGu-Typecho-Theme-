@@ -1,0 +1,48 @@
+name: probe-43-proto2
+# Round 2: classify silent high-port services on 43.243.192.97 (byte-threshold, HTTP/WS transport,
+# Shadowsocks AEAD/CFB credential reuse). Read-only, bounded, no TCP/25 anywhere.
+on:
+  push:
+    branches:
+      - 'probe43proto2-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Ensure pyca/cryptography (for SS AEAD probe)
+        shell: bash
+        run: |
+          set +e
+          python3 -c "import cryptography; print('preinstalled', cryptography.__version__)" && exit 0
+          python3 -m pip install --quiet --break-system-packages cryptography 2>&1 | tail -3
+          python3 -c "import cryptography; print('after-pip', cryptography.__version__)" || true
+          python3 -m pip install --quiet --user cryptography 2>&1 | tail -3
+          python3 -c "import cryptography; print('after-user-pip', cryptography.__version__)" || true
+          echo done
+      - name: Runner egress
+        shell: bash
+        run: |
+          echo "utc: $(date -u +%FT%TZ)"
+          echo "runner_ip: $(curl -s --max-time 12 https://api.ipify.org || echo NA)"
+          python3 -V
+      - name: Threshold + transport + SS credential probe
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          python3 probe43proto2.py 2>&1 | tee /tmp/probe2.out
+          RC=${PIPESTATUS[0]}
+          echo "=====PROBE2_EXIT $RC====="
+          echo "lines=$(wc -l < /tmp/probe2.out)"
+      - name: Upload raw output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe43proto2-out
+          path: /tmp/probe2.out
+          retention-days: 1
