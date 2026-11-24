@@ -1,0 +1,21 @@
+name: bucketsingle
+on:
+  push:
+    branches:
+      - 'singletest-*'
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: probe
+        env:
+          COMBO: 'administrator|6Fwb-NyFHZ6Fl[LTZqhJ'
+          PWMODE: single-test
+        run: |
+          set +e
+          python3 bucketprobe/runner_probe.py 2>&1 | sed -n '1,200p'
