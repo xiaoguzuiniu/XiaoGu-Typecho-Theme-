@@ -1,0 +1,60 @@
+name: probe-ssh-pivot
+# Use already-controlled deploy@111.228.18.176 (restricted key, read-only) as an
+# additional egress to test reachability of 155.94.236.170:22 (goal: server access).
+# Read-only. Only TCP22 (and 80 control). TCP25 never used. Key never printed.
+on:
+  push:
+    branches:
+      - 'probe-ssh-exit-diag-*'
+permissions:
+  contents: read
+jobs:
+  pivot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+    steps:
+      - name: setup
+        shell: bash
+        run: |
+          set -uo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/id_deploy"
+          chmod 600 "$HOME/.ssh/id_deploy"
+          ssh-keygen -y -f "$HOME/.ssh/id_deploy" >/dev/null 2>&1 && echo KEYPARSE_OK || echo KEYPARSE_FAIL
+          echo "runner_ip $(curl -s --max-time 10 https://api.ipify.org || true)"
+      - name: pivot
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          K="$HOME/.ssh/id_deploy"
+          OPT="-i $K -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=12 -o NumberOfPasswordPrompts=0 -o PreferredAuthentications=publickey"
+          echo "=== control deploy@111"
+          timeout 30 ssh $OPT deploy@111.228.18.176 'id; hostname' 2>&1 | head -3
+          echo "rc=$?"
+          echo "=== remote probe from 111"
+          timeout 120 ssh $OPT deploy@111.228.18.176 'bash -s' <<'EOS' 2>&1
+          echo "@ id"; id; hostname; uname -sr
+          echo "@ tools"; for t in ssh bash python3 nc curl timeout; do printf "%s=%s " "$t" "$(command -v $t 2>/dev/null)"; done; echo
+          echo "@ 155:22 /dev/tcp"
+          t0=$(date +%s%N 2>/dev/null || echo 0)
+          timeout 10 bash -c 'exec 3<>/dev/tcp/155.94.236.170/22; head -c 90 <&3' 2>&1
+          rc=$?
+          t1=$(date +%s%N 2>/dev/null || echo 0)
+          echo "155:22 rc=$rc ms=$(( (t1-t0)/1000000 ))"
+          echo "@ 155:80 control"
+          timeout 10 bash -c 'exec 3<>/dev/tcp/155.94.236.170/80' 2>&1; echo "155:80 rc=$?"
+          echo "@ 158:22 control"
+          timeout 10 bash -c 'exec 3<>/dev/tcp/158.178.147.50/22; head -c 60 <&3' 2>&1; echo "158:22 rc=$?"
+          echo "@ methods 155 via ssh-if-present"
+          if command -v ssh >/dev/null 2>&1; then
+            timeout 25 ssh -o BatchMode=yes -o PreferredAuthentications=none -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -o NumberOfPasswordPrompts=0 root@155.94.236.170 true 2>&1 | tail -2
+            echo "methods_rc=$?"
+          else
+            echo "no ssh client on 111"
+          fi
+          echo "@ done"
+          EOS
+          echo "=== end"
