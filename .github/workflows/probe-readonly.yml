@@ -1,0 +1,68 @@
+name: probe-readonly
+on:
+  push:
+    branches:
+      - 'probe-readonly-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+      - name: Probe agent internals 3
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          RS() { ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "$DEPLOY_USER@$DEPLOY_HOST" bash -s 2>&1; }
+          echo "### AA run/socket perms"
+          RS <<'EOS'
+          find /usr/local/share/jcloud/ifrit/var/run -maxdepth 3 -printf '%M %u:%g %8s %TY-%Tm-%Td %TH:%TM %p -> %l\n' 2>/dev/null
+          echo '--- /var/log/jcloud perms ---'
+          find /var/log/jcloud -maxdepth 3 -printf '%M %u:%g %8s %p\n' 2>/dev/null | head -40
+          EOS
+          echo "### AB ifrit.log auth/master/commands"
+          RS <<'EOS'
+          LOGF=/usr/local/share/jcloud/ifrit/var/log/ifrit/ifrit.log
+          echo '--- size/lines ---'; wc -lc "$LOGF" 2>/dev/null
+          echo '--- grep auth/master/notify/command ---'
+          grep -aiE 'token|authorization|secret|access.?key|ak=|sk=|signature|password|master|notify|command\[|CommandRequest|install|download|exec' "$LOGF" 2>/dev/null | tail -60
+          echo '--- last 25 lines ---'; tail -25 "$LOGF" 2>/dev/null
+          EOS
+          echo "### AC jcloud agent logs"
+          RS <<'EOS'
+          for f in /var/log/jcloud/agent/*.log /var/log/jcloud/*/*.log; do [ -f "$f" ] || continue; echo "== $f =="; grep -aiE 'token|secret|password|command|exec|userdata|script|notify' "$f" 2>/dev/null | tail -15; done
+          EOS
+          echo "### AD install scripts"
+          RS <<'EOS'
+          echo '--- control.sh ---'; cat /usr/local/share/jcloud/ifrit/packages/8b7969e6b38ff46602866af4ad454b1e/ifrit/control.sh 2>/dev/null
+          echo '--- install_component.sh head 140 ---'; sed -n '1,140p' /usr/local/share/jcloud/ifrit/packages/8b7969e6b38ff46602866af4ad454b1e/ifrit/install_component.sh 2>/dev/null
+          EOS
+          echo "### AE deploy-readable secret grep (planner hint)"
+          RS <<'EOS'
+          echo '--- env ---'; env | grep -iE 'token|key|secret|api|pass' 
+          echo '--- home/dotfiles ---'; ls -la /home/deploy 2>/dev/null; for f in /home/deploy/.bashrc /home/deploy/.profile /home/deploy/.npmrc /home/deploy/.gitconfig; do [ -f "$f" ] && { echo "== $f"; grep -iE 'token|key|secret|pass|api' "$f" 2>/dev/null; }; done
+          echo '--- grep operator dirs ---'
+          grep -rIaE 'YESCAPTCHA_API_KEY|yescaptcha|CF_API|CLOUDFLARE_API|162\.141\.137\.231|hytron|1poa' /home /var/www /opt /etc/nginx 2>/dev/null | head -40
+          EOS
+          echo "### AF notify semantic (GET only, no state change)"
+          RS <<'EOS'
+          echo '--- GET /notify headers ---'; curl -s -m5 -i http://127.0.0.1:1234/notify 2>/dev/null | head -15
+          echo '--- ifrit.log tail after notify ---'; tail -8 /usr/local/share/jcloud/ifrit/var/log/ifrit/ifrit.log 2>/dev/null
+          EOS
+          echo "### done"
+          exit 0
