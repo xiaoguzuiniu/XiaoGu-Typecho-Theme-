@@ -1,0 +1,54 @@
+name: probe-readonly
+# Read-only diagnostic probe (no deploy, no tree changes).
+on:
+  push:
+    branches:
+      - 'probe-readonly-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+      DEPLOY_SSH_KEY_B64: ${{ secrets.DEPLOY_SSH_KEY_B64 }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
+          ssh-keygen -y -f "$HOME/.ssh/deploy_key" > /dev/null && echo "key-ok"
+      - name: Probe read-only
+        shell: bash
+        run: |
+          set -uo pipefail
+          exec > >(tee probe.out) 2>&1
+          RC() {
+            ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
+              -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
+              "$DEPLOY_USER@$DEPLOY_HOST" "$1"
+            echo "[rc=$?]"
+          }
+          echo "### 1 identity"
+          RC "id; whoami; hostname; uname -a; date -u"
+          echo "### 2 appdir"
+          RC "ls -la /var/www/xiaoguyouqu | head -60"
+          echo "### 3 config"
+          RC "cat /var/www/xiaoguyouqu/config.inc.php"
+          echo "### 4 sudo"
+          RC "sudo -n -l"
+          echo "### done"
+      - name: Upload probe output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-out
+          path: probe.out
+          if-no-files-found: warn
