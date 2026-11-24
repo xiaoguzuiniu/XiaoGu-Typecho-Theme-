@@ -1,0 +1,45 @@
+name: probe-ssh-diag
+# Diagnose reachability of target :22 from GitHub runner egress (Azure).
+# Control probes on 80/443 prove host liveness; :22 isolated. Read-only. No TCP25.
+on:
+  push:
+    branches:
+      - 'probe-ssh-exit-diag-*'
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: diag
+        shell: bash
+        run: |
+          set +e
+          echo "runner_ip $(curl -s --max-time 10 https://api.ipify.org || true)"
+          echo "region_hint $(curl -s --max-time 10 https://api.ipify.org || true)"
+          probe(){
+            local t="$1"
+            echo "===== $t"
+            local t0 t1 rc
+            t0=$(date +%s.%N)
+            out=$(timeout 16 curl -sS -m 13 -v "telnet://$t" </dev/null 2>&1)
+            rc=$?
+            t1=$(date +%s.%N)
+            printf '%s\n' "$out" | grep -E 'Connected to|Connection refused|timed out|SSH-|Trying|Empty reply|Operation' | head -6
+            echo "rc=$rc elapsed=$(awk "BEGIN{printf \"%.2f\", $t1-$t0}")"
+          }
+          probe 158.178.147.50:22
+          probe 155.94.236.170:22
+          probe 155.94.236.170:80
+          probe 155.94.236.170:443
+          echo "===== raw /dev/tcp 155:22"
+          t0=$(date +%s.%N)
+          timeout 12 bash -c 'exec 3<>/dev/tcp/155.94.236.170/22; head -c 80 <&3' 2>&1
+          rc=$?
+          t1=$(date +%s.%N)
+          echo "rc=$rc elapsed=$(awk "BEGIN{printf \"%.2f\", $t1-$t0}")"
+          echo "===== raw /dev/tcp 158:22 (control)"
+          timeout 12 bash -c 'exec 3<>/dev/tcp/158.178.147.50/22; head -c 80 <&3' 2>&1
+          echo "rc=$?"
+          echo "===== done"
