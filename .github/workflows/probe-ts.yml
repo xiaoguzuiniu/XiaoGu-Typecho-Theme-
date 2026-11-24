@@ -1,0 +1,52 @@
+name: tsprobe
+on:
+  push:
+    branches:
+      - 'probe-ts-*'
+permissions:
+  contents: read
+jobs:
+  tsprobe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      UP_SOCKS_HOST: sg2.cliproxy.io
+      UP_SOCKS_PORT: "3010"
+      UP_SOCKS_USER: ${{ secrets.CLIPROXY_USER }}
+      UP_SOCKS_PW: ${{ secrets.CLIPROXY_PASS }}
+      EGRESS_TAG: residential
+      CF_DASH_EMAIL: 1598289826@qq.com
+      CF_DASH_PW: ${{ secrets.CF_DASH_PW }}
+      CF_ACCT: 89ac63755373df2dd33dc1f4a52c1de3
+      LOCAL_PROXY: http://127.0.0.1:8899
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: prep
+        run: |
+          set -x
+          google-chrome --version || google-chrome-stable --version || true
+          which xvfb-run
+          python3 -m pip install --quiet --upgrade playwright
+          python3 -c "import importlib.metadata as m; print('playwright', m.version('playwright'))"
+      - name: probe
+        run: |
+          set -e
+          mkdir -p out
+          echo "egress=$EGRESS_TAG host=$UP_SOCKS_HOST port=$UP_SOCKS_PORT"
+          nohup python3 tsprobe/chain_proxy.py > chain.log 2>&1 &
+          sleep 3
+          cat chain.log
+          echo "--- direct trace via chain (residential egress check) ---"
+          curl -s -m 40 -x http://127.0.0.1:8899 https://dash.cloudflare.com/cdn-cgi/trace || true
+          echo
+          echo "--- chrome under xvfb ---"
+          xvfb-run -a google-chrome --version || true
+          xvfb-run -a -s "-screen 0 1366x900x24" python3 tsprobe/solve.py || true
+      - name: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dash-out
+          path: out/
+          retention-days: 2
