@@ -1,0 +1,37 @@
+name: probe-43-proto3
+# Round 3: content-sensitivity + exact close threshold + plaintext-Trojan candidates + UDP QUIC
+# classification for 43.243.192.97 high ports. Read-only, bounded, no TCP/25 anywhere.
+on:
+  push:
+    branches:
+      - 'probe43proto3-*'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Runner egress
+        shell: bash
+        run: |
+          echo "utc: $(date -u +%FT%TZ)"
+          echo "runner_ip: $(curl -s --max-time 12 https://api.ipify.org || echo NA)"
+      - name: Content/threshold/trojan/udp probe
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          python3 probe43proto3.py 2>&1 | tee /tmp/probe3.out
+          RC=${PIPESTATUS[0]}
+          echo "=====PROBE3_EXIT $RC====="
+          echo "lines=$(wc -l < /tmp/probe3.out)"
+      - name: Upload raw output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe43proto3-out
+          path: /tmp/probe3.out
+          retention-days: 1
