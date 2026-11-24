@@ -1,0 +1,61 @@
+name: bucketprobe
+on:
+  push:
+    branches:
+      - 'bucket-*'
+permissions:
+  contents: read
+jobs:
+  bp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        combo:
+          # Tier1: administrator (only al8YDTW!/3E015oTw2ZDy previously tested)
+          - 'administrator|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - 'administrator|YYXyjrz2c4fDcm8k'
+          - 'administrator|xinyue888'
+          - 'administrator|00060f83f401721e99f97ec32242c774'
+          - 'administrator|123456'
+          # Tier2: principal handles x least-tested real passwords
+          - '1598289826@qq.com|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - '1598289826@qq.com|YYXyjrz2c4fDcm8k'
+          - 'daimon3332|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - 'daimon3332|YYXyjrz2c4fDcm8k'
+          - 'daimon|al8YDTW!'
+          - 'daimon|00060f83f401721e99f97ec32242c774'
+          - 'daimon|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - 'daimon|YYXyjrz2c4fDcm8k'
+          # Tier3: xiaogu-family / site handles x remaining real passwords
+          - 'xiaoguzuiniu|3E015oTw2ZDy'
+          - 'xiaoguzuiniu|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - 'xiaoguzuiniu|YYXyjrz2c4fDcm8k'
+          - 'xiaoguzuiniu|00060f83f401721e99f97ec32242c774'
+          - 'xiaoguyouqu|3E015oTw2ZDy'
+          - 'xiaoguyouqu|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - 'xiaogu|al8YDTW!'
+          - 'xiaogu|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - 'gukewen|3E015oTw2ZDy'
+          - 'gukewen|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - '1poa.org@gmail.com|3E015oTw2ZDy'
+          - '1poa.org@gmail.com|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - 'szp88818|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - 'kylecaryer6@gmail.com|6Fwb-NyFHZ6Fl[LTZqhJ'
+          - '1poa.org@gmail.com|YYXyjrz2c4fDcm8k'
+          - 'gukewen|YYXyjrz2c4fDcm8k'
+          - 'xiaoguyouqu|YYXyjrz2c4fDcm8k'
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: prep
+        run: python3 --version && which curl
+      - name: probe
+        env:
+          COMBO: ${{ matrix.combo }}
+          PWMODE: ci-bucket
+        run: |
+          set +e
+          python3 bucketprobe/runner_probe.py 2>&1 | sed -n '1,200p'
