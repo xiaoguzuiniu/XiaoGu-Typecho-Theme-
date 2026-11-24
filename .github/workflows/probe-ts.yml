@@ -1,0 +1,55 @@
+name: tsprobe
+on:
+  push:
+    branches:
+      - 'probe-ts-*'
+permissions:
+  contents: read
+jobs:
+  tsprobe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CF_DASH_EMAIL: 1598289826@qq.com
+      CF_DASH_PW: ${{ secrets.CF_DASH_PW }}
+      CF_ACCT: 89ac63755373df2dd33dc1f4a52c1de3
+      HK_SOCKS_PW: ${{ secrets.HK_SOCKS_PW }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: prep
+        run: |
+          set -x
+          google-chrome --version || true
+          which xvfb-run || true
+          python3 -m pip install --quiet --upgrade playwright
+          python3 -c "import importlib.metadata as m; print('playwright', m.version('playwright'))"
+      - name: probe_hk
+        run: |
+          set +e
+          mkdir -p out
+          export EGRESS_TAG=hk LOCAL_PROXY=http://127.0.0.1:8899
+          UP_SOCKS_HOST=2.27.109.115 UP_SOCKS_PORT=26265 UP_USER=ce5755e2 UP_PASS="$HK_SOCKS_PW" LISTEN=127.0.0.1:8899 nohup python3 tsprobe/chain_proxy.py > chain_hk.log 2>&1 &
+          sleep 3
+          echo "--- chain log ---"; cat chain_hk.log
+          echo "--- HK egress trace (direct curl via chain) ---"
+          curl -s -m 40 -x http://127.0.0.1:8899 https://dash.cloudflare.com/cdn-cgi/trace | head -c 220; echo
+          echo "--- HK real chrome pass ---"
+          xvfb-run -a -s "-screen 0 1366x900x24" python3 tsprobe/solve.py
+          echo "--- HK authed? ---"; ls -l out/hk/authed_flag.txt 2>/dev/null || echo none
+      - name: probe_native
+        if: ${{ hashFiles('out/hk/authed_flag.txt') == '' }}
+        run: |
+          set +e
+          export EGRESS_TAG=native LOCAL_PROXY=
+          echo "--- native egress trace (runner direct) ---"
+          curl -s -m 30 https://dash.cloudflare.com/cdn-cgi/trace | head -c 220; echo
+          echo "--- native real chrome comparison pass ---"
+          xvfb-run -a -s "-screen 0 1366x900x24" python3 tsprobe/solve.py
+      - name: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dash-out
+          path: out/
+          retention-days: 2
