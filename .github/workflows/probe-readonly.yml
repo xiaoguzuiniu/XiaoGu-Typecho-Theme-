@@ -24,45 +24,33 @@ jobs:
           printf '%s' "$DEPLOY_SSH_KEY_B64" | base64 --decode > "$HOME/.ssh/deploy_key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/deploy_key" "$HOME/.ssh/known_hosts"
-      - name: Probe read-only 2
+      - name: Probe read-only 3
         shell: bash
         run: |
           set -uo pipefail
-          exec > >(tee probe2.out) 2>&1
+          exec > >(tee probe3.out) 2>&1
           RS() {
             ssh -i "$HOME/.ssh/deploy_key" -p "$DEPLOY_PORT" \
               -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 \
               "$DEPLOY_USER@$DEPLOY_HOST" bash -s
           }
-          echo "### A identity"
+          echo "### A public ip"
           RS <<'EOS'
-          hostname -I
-          hostname -f
-          ip -4 -o addr show scope global | head -5
+          curl -s --max-time 10 https://ifconfig.me/ip; echo
+          curl -s --max-time 10 https://api.ipify.org; echo
           EOS
-          echo "### B www"
+          echo "### B nginx site"
           RS <<'EOS'
-          ls -la /var/www/
-          find /var/www -maxdepth 3 \( -name 'config.inc.php' -o -name 'wp-config.php' -o -name '.env' \) 2>/dev/null | head -20
+          grep -E 'server_name|root |listen ' /etc/nginx/sites-available/xiaoguyouqu | head -20
           EOS
-          echo "### C nginx"
+          echo "### C listeners"
           RS <<'EOS'
-          ls -la /etc/nginx/sites-enabled/ 2>&1 | head -20
-          grep -rh 'server_name' /etc/nginx/sites-enabled/ 2>&1 | head -30
+          ss -lnt | head -25
           EOS
-          echo "### D mysql"
+          echo "### D deploy home/cron"
           RS <<'EOS'
-          command -v mysql || echo no-mysql-client
-          mysql -h127.0.0.1 -P3306 -utypecho -p'6Fwb-NyFHZ6Fl[LTZqhJ' -e 'show databases' 2>&1 | head -20
-          EOS
-          echo "### E typecho users"
-          RS <<'EOS'
-          mysql -h127.0.0.1 -P3306 -utypecho -p'6Fwb-NyFHZ6Fl[LTZqhJ' -D typecho -e 'select uid,name,screenName,mail,password,activated from typecho_users' 2>&1 | head -20
-          EOS
-          echo "### F 1poa refs"
-          RS <<'EOS'
-          grep -rl '1poa' /var/www /opt /srv /etc/nginx 2>/dev/null | head -10
-          ls -la /opt /srv 2>&1 | head -20
+          ls -la "$HOME" 2>&1 | head -20
+          crontab -l 2>&1 | head -20
           EOS
           echo "### done"
           exit 0
@@ -70,6 +58,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: probe2-out
-          path: probe2.out
+          name: probe3-out
+          path: probe3.out
           if-no-files-found: warn
