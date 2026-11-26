@@ -1,32 +1,32 @@
 <?php if (!defined('__TYPECHO_ROOT_DIR__')) exit; ?>
 <section class="music-page" aria-label="音乐歌单">
     <header class="music-hero">
-        <div><span class="music-eyebrow">MY PLAYLIST</span><h1>音乐</h1><p>收藏想反复听的声音。</p></div>
-        <span class="music-hero-icon" aria-hidden="true">♫</span>
+        <div class="music-hero-copy">
+            <span class="music-eyebrow"><span class="music-eyebrow-line"></span> XIAOGU RADIO <span class="music-eyebrow-number">/ 01</span></span>
+            <h1>让音乐，<br><em>慢慢发生。</em></h1>
+            <p>把喜欢的旋律，留在这里。</p>
+            <div class="music-hero-now" aria-live="polite"><span class="music-live-dot"></span><span id="music-hero-now">选一首歌，开始聆听</span></div>
+        </div>
+        <div class="music-hero-art" aria-hidden="true">
+            <div class="music-disc"><div class="music-disc-label"><span>小古的<br>音乐角落</span><i></i></div></div>
+            <span class="music-disc-caption">SIDE A · PLAY SOMETHING GOOD</span>
+        </div>
     </header>
-    <div class="music-toolbar">
-        <label class="sr-only" for="music-search">搜索歌曲</label>
-        <input id="music-search" type="search" placeholder="搜索歌曲、歌手或专辑" autocomplete="off">
-        <span id="music-count">0 首</span>
+
+    <div class="music-section-head">
+        <div><span class="music-section-kicker">YOUR COLLECTION</span><h2>播放列表 <span id="music-count">00</span></h2></div>
+        <label class="music-search-box" for="music-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 4.5 4.5"></path></svg>
+            <input id="music-search" type="search" placeholder="搜索歌曲 / 歌手 / 专辑" autocomplete="off" aria-label="搜索歌曲、歌手或专辑">
+        </label>
     </div>
-    <details class="music-add">
-        <summary>添加歌曲</summary>
-        <form id="music-add-form">
-            <label>接口密钥<input type="password" name="token" required autocomplete="off" placeholder="后台外观设置中的音乐接口密钥"></label>
-            <label>歌名<input name="title" required maxlength="200"></label>
-            <label>歌手<input name="artist" maxlength="200"></label>
-            <label>专辑<input name="album" maxlength="200"></label>
-            <label>网易云 song_id（导入时填写）<input name="song_id" inputmode="numeric" pattern="[1-9][0-9]*" placeholder="可留空，作为普通上传"></label>
-            <label>授权音频文件<input type="file" name="audio" accept="audio/*,.mp3,.m4a,.aac,.flac,.ogg,.wav" required></label>
-            <button type="submit">上传并加入歌单</button>
-            <p id="music-upload-status" role="status"></p>
-        </form>
-    </details>
+
+    <div class="music-list-heading" aria-hidden="true"><span>曲目</span><span>标题 / 歌手</span><span>播放</span></div>
     <p class="music-status" id="music-status" role="status">正在加载歌单…</p>
     <ol class="music-list" id="music-list" aria-label="歌曲列表"></ol>
     <div class="music-player" id="music-player" hidden>
-        <div class="music-player-art" aria-hidden="true">♫</div>
-        <div class="music-player-copy"><strong id="music-current-title"></strong><span id="music-current-artist"></span></div>
+        <div class="music-player-mark" aria-hidden="true"><span>♪</span></div>
+        <div class="music-player-copy"><small>正在播放</small><strong id="music-current-title"></strong><span id="music-current-artist"></span></div>
         <audio id="music-audio" controls preload="none"></audio>
     </div>
 </section>
