@@ -1,4 +1,5 @@
 RewriteEngine On
+RewriteRule ^api/music/(tracks(/[^/]+/audio)?|imports)/?$ index.php [L,QSA]
 RewriteRule ^api/overtime/?$ index.php [L,QSA]
 RewriteRule ^api/moments/?$ api/moments.php [L,QSA]
 RewriteRule ^api/gallery/?$ api/gallery.php [L,QSA]

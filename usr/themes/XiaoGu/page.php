@@ -21,6 +21,7 @@ $isGallery = !$isPost && $pageSlug === 'gallery';
 $isLedger = !$isPost && $pageSlug === 'ledger';
 $isFitness = !$isPost && $pageSlug === 'fitness';
 $isOvertime = !$isPost && $pageSlug === 'overtime';
+$isMusic = !$isPost && $pageSlug === 'music';
 if ($isOvertime) {
     require_once __DIR__ . '/overtime-access.php';
     $overtimeAccess = xiaoguOvertimePageAccess(
@@ -75,6 +76,9 @@ if ($profileSignature === '') {
         <link rel="stylesheet"
               href="<?php $this->options->themeUrl('assets/overtime.css?v=' . filemtime(__DIR__ . '/assets/overtime.css')); ?>">
     <?php endif; ?>
+    <?php if ($isMusic): ?>
+        <link rel="stylesheet" href="<?php $this->options->themeUrl('assets/music.css?v=' . filemtime(__DIR__ . '/assets/music.css')); ?>">
+    <?php endif; ?>
     <?php $this->header(); ?>
 </head>
 
@@ -85,8 +89,8 @@ if ($profileSignature === '') {
     <div class="site-shell">
         <?php $this->need('topbar.php'); ?>
 
-        <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php elseif ($isGallery): ?> gallery-layout<?php elseif ($isLedger): ?> ledger-layout<?php elseif ($isFitness): ?> fitness-layout<?php elseif ($isOvertime): ?> overtime-layout<?php endif; ?>">
-            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>"<?php if (!$isGallery && !$isLedger && !$isFitness && !$isOvertime): ?> data-damped-scroll<?php endif; ?>>
+        <div class="content-grid page-layout<?php if ($isArticlePost): ?> article-detail-layout<?php elseif ($isGuestbook): ?> guestbook-layout<?php elseif ($isNeighbors): ?> neighbors-layout<?php elseif ($isGallery): ?> gallery-layout<?php elseif ($isLedger): ?> ledger-layout<?php elseif ($isFitness): ?> fitness-layout<?php elseif ($isOvertime): ?> overtime-layout<?php elseif ($isMusic): ?> music-layout<?php endif; ?>">
+            <main class="page-column<?php if ($isPost): ?> post-column<?php endif; ?>" aria-label="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>"<?php if (!$isGallery && !$isLedger && !$isFitness && !$isOvertime && !$isMusic): ?> data-damped-scroll<?php endif; ?>>
                 <article class="page-article <?php echo $isPost ? 'post-detail' : 'page-' . htmlspecialchars($pageSlug, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($isPost): ?>
                         <section class="post-detail-hero" aria-label="文章头图">
@@ -191,6 +195,8 @@ if ($profileSignature === '') {
                             <?php $this->need('fitness-view.php'); ?>
                         <?php elseif ($isOvertime): ?>
                             <?php $this->need('overtime-view.php'); ?>
+                        <?php elseif ($isMusic): ?>
+                            <?php $this->need('music-view.php'); ?>
                         <?php elseif ($isAbout): ?>
                             <header class="about-hero">
                                 <h1><?php $this->title(); ?></h1>
@@ -221,7 +227,7 @@ if ($profileSignature === '') {
                 </article>
             </main>
 
-            <?php if (!$isFitness && !$isOvertime): ?>
+            <?php if (!$isFitness && !$isOvertime && !$isMusic): ?>
                 <?php $this->need($isGallery ? 'gallery-sidebar.php' : 'sidebar.php'); ?>
             <?php endif; ?>
         </div>
@@ -466,6 +472,9 @@ if ($profileSignature === '') {
 <?php endif; ?>
 <?php if ($isOvertime): ?>
     <script src="<?php $this->options->themeUrl('assets/overtime.js?v=' . filemtime(__DIR__ . '/assets/overtime.js')); ?>"></script>
+<?php endif; ?>
+<?php if ($isMusic): ?>
+    <script src="<?php $this->options->themeUrl('assets/music.js?v=' . filemtime(__DIR__ . '/assets/music.js')); ?>"></script>
 <?php endif; ?>
 <?php $this->footer(); ?>
 </body>

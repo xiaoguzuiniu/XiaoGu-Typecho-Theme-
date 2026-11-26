@@ -149,6 +149,36 @@ class Plugin implements PluginInterface
     {
     }
 
+    /** Upload an audio file validated by the music API, without the global attachment extension filter. */
+    public static function uploadAuthorizedAudio(array $file): array|false
+    {
+        $name = basename((string) ($file['name'] ?? ''));
+        $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+        if (!in_array($extension, ['mp3', 'm4a', 'aac', 'flac', 'ogg', 'wav'], true)) {
+            return false;
+        }
+        $config = self::getConfig();
+        $source = self::prepareSource($file);
+        if ($config === false || $source === false) {
+            return false;
+        }
+        $key = self::createObjectKey($config['pathPrefix'], $extension);
+        try {
+            if (!self::uploadFile($source['path'], $name, $key, $config, true)) {
+                return false;
+            }
+            return [
+                'name' => $name,
+                'path' => self::PATH_PREFIX . $key,
+                'size' => (int) ($file['size'] ?? filesize($source['path'])),
+                'type' => $extension,
+                'mime' => Common::mimeContentType($source['path']) ?: 'application/octet-stream'
+            ];
+        } finally {
+            self::cleanSource($source);
+        }
+    }
+
     public static function uploadHandle(array $file)
     {
         $fileInfo = self::validateFile($file);

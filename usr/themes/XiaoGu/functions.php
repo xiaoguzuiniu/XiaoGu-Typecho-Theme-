@@ -718,6 +718,12 @@ function themeConfig($form)
     );
     $form->addInput($overtimePagePassword);
 
+    $musicApiToken = new \Typecho\Widget\Helper\Form\Element\Text(
+        'musicApiToken', null, null, _t('音乐接口密钥'),
+        _t('至少 24 位随机字符；上传和导入音频时在 Authorization: Bearer 请求头中使用。')
+    );
+    $form->addInput($musicApiToken);
+
     $hopeGames = new \Typecho\Widget\Helper\Form\Element\Textarea(
         'hopeGames',
         null,
